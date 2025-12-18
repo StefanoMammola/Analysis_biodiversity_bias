@@ -110,10 +110,9 @@ result_tot <- data.frame(label = paste0("Intercept (", nrow(db2),", ", nrow(db),
                                 L     = ((exp(model_tot$ci.lb)-1)/(exp(model_tot$ci.lb)+1)),
                                 U     = ((exp(model_tot$ci.ub)-1)/(exp(model_tot$ci.ub)+1)))
 
-
 (plot_base_model <- ggplot(data = result_tot) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
     
     gghalves::geom_half_violin(
     data = db,
@@ -132,94 +131,79 @@ result_tot <- data.frame(label = paste0("Intercept (", nrow(db2),", ", nrow(db),
     coord_flip())
 
 # Methodological moderators ------------------------------------------------
+model_type <- metafor::rma.mv(yi, vi, 
+                              mods = ~ 0 + Study_type, 
+                              random = list(~1 | ID), 
+                              data = db)
 
-model_type <- metafor::rma.mv(yi, vi, mods = ~ Study_type, random = list(~1 | ID), data = db)
+levs_type <- levels(db$Study_type)
 
-result_type <- data.frame(label = c(paste0("Data mining (", 
-                                          nrow(db2[db2$Study_type == db2$Study_type[1],]),", ", 
-                                          nrow(db[db$Study_type == db$Study_type[1],]),")"),
-                                   paste0("Survey (", 
-                                          nrow(db2[db2$Study_type == db2$Study_type[2],]),", ", 
-                                          nrow(db[db$Study_type == db$Study_type[2],]),")")
-                                    ),
-                         
-                         b     = model_type$b,
-                         ci.lb = model_type$ci.lb,
-                         ci.ub = model_type$ci.ub,
-                         ES    = ((exp(model_type$b)-1))/((exp(model_type$b)+1)),
-                         L     = ((exp(model_type$ci.lb)-1)/(exp(model_type$ci.lb)+1)),
-                         U     = ((exp(model_type$ci.ub)-1)/(exp(model_type$ci.ub)+1)))
+result_type <- data.frame(
+  Study_type = levs_type,
+  b     = model_type$b,
+  ci.lb = model_type$ci.lb,
+  ci.ub = model_type$ci.ub,
+  ES    = ((exp(model_type$b)-1))/((exp(model_type$b)+1)),
+  L     = ((exp(model_type$ci.lb)-1)/(exp(model_type$ci.lb)+1)),
+  U     = ((exp(model_type$ci.ub)-1)/(exp(model_type$ci.ub)+1))
+)
 
+#rename the label
+result_type$Study_type <- paste0(
+  levs_type, " (",
+  sapply(levs, function(l) nrow(db2[db2$Study_type == l,])),
+  ", ",
+  sapply(levs, function(l) nrow(db[db$Study_type == l,])),
+  ")"
+)
 
-levels(db$Study_type) <- result_type$label
+levels(db$Study_type) <- result_type$Study_type
 
 (plot_type <- ggplot(data = result_type) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]")))+
-    
-    gghalves::geom_half_violin(
-      data = db,
-      aes(x = Study_type, y = Pearson_r, fill = Study_type),
-      side = "r",
-      color = NA,
-      fill = "grey70",
-      width = 0.6,
-      trim = FALSE,
-      position = position_nudge(x = 0.1))+
-
+    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
     geom_jitter(data = db, aes(x = Study_type, y = Pearson_r),
                  size = 0.3, color = "grey70", width = 0.05)+
     
-    geom_pointrange(aes(x = label, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_pointrange(aes(x = Study_type, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
     ylim(-.5,1))
 
-
 # Geographic moderators ------------------------------------------------
-
 db$Geography_macro <- relevel(db$Geography_macro, "Global") #setting baseline
 
-model_geo <- metafor::rma.mv(yi, vi, mods = ~ Geography_macro, random = list(~1 | ID), data = db)
+model_geo <- metafor::rma.mv(yi, vi, mods = ~ 0 + Geography_macro, random = list(~1 | ID), data = db)
 
-label_geo <- c()
-for(i in 1:nlevels(db$Geography_macro)) {
-  label_geo <- append(label_geo, 
-         c(paste0(levels(db$Geography_macro)[i], " (", 
-         nrow(db[db$Geography_macro == levels(db$Geography_macro)[i],] |> 
-         dplyr::distinct(ID, .keep_all = TRUE)),", ", 
-         nrow(db[db$Geography_macro == levels(db$Geography_macro)[i],]),")")))
-}
+levs_geo <- levels(db$Geography_macro)
 
-result_geo <- data.frame(label = label_geo, 
-                          b     = model_geo$b,
-                          ci.lb = model_geo$ci.lb,
-                          ci.ub = model_geo$ci.ub,
-                          ES    = ((exp(model_geo$b)-1))/((exp(model_geo$b)+1)),
-                          L     = ((exp(model_geo$ci.lb)-1)/(exp(model_geo$ci.lb)+1)),
-                          U     = ((exp(model_geo$ci.ub)-1)/(exp(model_geo$ci.ub)+1)))
+result_geo <- data.frame(
+  Geography_macro = levs_geo,
+  b     = model_geo$b,
+  ci.lb = model_geo$ci.lb,
+  ci.ub = model_geo$ci.ub,
+  ES    = ((exp(model_geo$b)-1))/((exp(model_geo$b)+1)),
+  L     = ((exp(model_geo$ci.lb)-1)/(exp(model_geo$ci.lb)+1)),
+  U     = ((exp(model_geo$ci.ub)-1)/(exp(model_geo$ci.ub)+1))
+)
 
+#rename the label
+result_geo$Geography_macro <- paste0(
+  levs_geo, " (",
+  sapply(levs_geo, function(l) nrow(db2[db2$Geography_macro == l,])),
+  ", ",
+  sapply(levs_geo, function(l) nrow(db[db$Geography_macro == l,])),
+  ")"
+)
 
-levels(db$Geography_macro) <- result_geo$label
+levels(db$Geography_macro) <- result_geo$Geography_macro
 
 (plot_geo <- ggplot(data = result_geo) +
     xlab("")+
     ylab(expression(paste("Effect size [",italic("r"),"]")))+
-    
-    # gghalves::geom_half_violin(
-    #   data = db,
-    #   aes(x = Geography_macro, y = Pearson_r, fill = Geography_macro),
-    #   side = "r",
-    #   color = NA,
-    #   fill = "grey70",
-    #   width = 0.6,
-    #   trim = FALSE,
-    #   position = position_nudge(x = 0.1))+
-    # 
-    # geom_jitter(data = db, aes(x = Geography_macro, y = Pearson_r),
-    #             size = 0.3, color = "grey70", width = 0.05)+
-    
-    geom_pointrange(aes(x = label, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_jitter(data = db, aes(x = Geography_macro, y = Pearson_r),
+                size = 0.3, color = "grey70", width = 0.05)+
+    geom_pointrange(aes(x = Geography_macro, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
     ylim(-.5,1))
