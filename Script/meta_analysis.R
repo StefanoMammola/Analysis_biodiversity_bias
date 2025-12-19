@@ -136,10 +136,11 @@ model_type <- metafor::rma.mv(yi, vi,
                               random = list(~1 | ID), 
                               data = db)
 
-levs_type <- levels(db$Study_type)
+#Extract estimates
+levs <- levels(db$Study_type)
 
 result_type <- data.frame(
-  Study_type = levs_type,
+  Label = levs,
   b     = model_type$b,
   ci.lb = model_type$ci.lb,
   ci.ub = model_type$ci.ub,
@@ -149,15 +150,15 @@ result_type <- data.frame(
 )
 
 #rename the label
-result_type$Study_type <- paste0(
-  levs_type, " (",
-  sapply(levs, function(l) nrow(db2[db2$Study_type == l,])),
+result_type$Label <- paste0(
+  levs, " (",
+  sapply(levs, function(l) length(unique(db[db$Study_type == l,]$ID))),
   ", ",
   sapply(levs, function(l) nrow(db[db$Study_type == l,])),
   ")"
 )
 
-levels(db$Study_type) <- result_type$Study_type
+levels(db$Study_type) <- result_type$Label
 
 (plot_type <- ggplot(data = result_type) +
     xlab("")+
@@ -165,7 +166,7 @@ levels(db$Study_type) <- result_type$Study_type
     geom_jitter(data = db, aes(x = Study_type, y = Pearson_r),
                  size = 0.3, color = "grey70", width = 0.05)+
     
-    geom_pointrange(aes(x = Study_type, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
     ylim(-.5,1))
@@ -175,10 +176,11 @@ db$Geography_macro <- relevel(db$Geography_macro, "Global") #setting baseline
 
 model_geo <- metafor::rma.mv(yi, vi, mods = ~ 0 + Geography_macro, random = list(~1 | ID), data = db)
 
-levs_geo <- levels(db$Geography_macro)
+#Extract estimates
+levs <- levels(db$Geography_macro)
 
 result_geo <- data.frame(
-  Geography_macro = levs_geo,
+  Label = levs,
   b     = model_geo$b,
   ci.lb = model_geo$ci.lb,
   ci.ub = model_geo$ci.ub,
@@ -188,22 +190,63 @@ result_geo <- data.frame(
 )
 
 #rename the label
-result_geo$Geography_macro <- paste0(
-  levs_geo, " (",
-  sapply(levs_geo, function(l) nrow(db2[db2$Geography_macro == l,])),
+result_geo$Label <- paste0(
+  levs, " (",
+  sapply(levs, function(l) length(unique(db[db$Geography_macro == l,]$ID))),
   ", ",
-  sapply(levs_geo, function(l) nrow(db[db$Geography_macro == l,])),
+  sapply(levs, function(l) nrow(db[db$Geography_macro == l,])),
   ")"
 )
 
-levels(db$Geography_macro) <- result_geo$Geography_macro
+levels(db$Geography_macro) <- result_geo$Label
 
 (plot_geo <- ggplot(data = result_geo) +
     xlab("")+
     ylab(expression(paste("Effect size [",italic("r"),"]")))+
     geom_jitter(data = db, aes(x = Geography_macro, y = Pearson_r),
                 size = 0.3, color = "grey70", width = 0.05)+
-    geom_pointrange(aes(x = Geography_macro, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-.5,1))
+
+
+# Trait moderators ------------------------------------------------
+
+db$Independent <- paste(db$Independent_macro, db$Independent_zoomed, sep = " - ") |> as.factor()
+
+model_trait <- metafor::rma.mv(yi, vi, mods = ~ 0 + Independent, random = list(~1 | ID), data = db)
+
+#Extract estimates
+levs <- levels(db$Independent)
+
+result_trait <- data.frame(
+  Label = levs,
+  b     = model_trait$b,
+  ci.lb = model_trait$ci.lb,
+  ci.ub = model_trait$ci.ub,
+  ES    = ((exp(model_trait$b)-1))/((exp(model_trait$b)+1)),
+  L     = ((exp(model_trait$ci.lb)-1)/(exp(model_trait$ci.lb)+1)),
+  U     = ((exp(model_trait$ci.ub)-1)/(exp(model_trait$ci.ub)+1))
+)
+
+#rename the label
+result_trait$Label <- paste0(
+  levs, " (",
+  sapply(levs, function(l) length(unique(db[db$Independent == l,]$ID))),
+  ", ",
+  sapply(levs, function(l) nrow(db[db$Independent == l,])),
+  ")"
+)
+
+levels(db$Independent) <- result_trait$Label
+
+(plot_trait <- ggplot(data = result_trait) +
+    xlab("")+
+    ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    geom_jitter(data = db, aes(x = Independent, y = Pearson_r),
+                size = 0.3, color = "grey70", width = 0.05)+
+    geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
     ylim(-.5,1))
