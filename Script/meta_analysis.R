@@ -112,8 +112,7 @@ result_tot <- data.frame(label = paste0("Intercept (", nrow(db2),", ", nrow(db),
 
 (plot_base_model <- ggplot(data = result_tot) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
-    
+    ylab("")+
     gghalves::geom_half_violin(
     data = db,
     aes(x = result_tot$label, y = Pearson_r),
@@ -128,7 +127,8 @@ result_tot <- data.frame(label = paste0("Intercept (", nrow(db2),", ", nrow(db),
                 size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
-    coord_flip())
+    coord_flip()+
+    ylim(-1,1))
 
 # Methodological moderators ------------------------------------------------
 model_type <- metafor::rma.mv(yi, vi, 
@@ -158,18 +158,24 @@ result_type$Label <- paste0(
   ")"
 )
 
-levels(db$Study_type) <- result_type$Label
+
+label_map <- setNames(result_type$Label, result_type$Label)
+
+db$Label <- factor(
+  result_type$Label[match(db$Study_type, levs)],
+  levels = result_type$Label
+)
 
 (plot_type <- ggplot(data = result_type) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
-    geom_jitter(data = db, aes(x = Study_type, y = Pearson_r),
+    ylab("")+
+    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
                  size = 0.3, color = "grey70", width = 0.05)+
     
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
-    ylim(-.5,1))
+    ylim(-1,1))
 
 # Geographic moderators ------------------------------------------------
 db$Geography_macro <- relevel(db$Geography_macro, "Global") #setting baseline
@@ -198,21 +204,68 @@ result_geo$Label <- paste0(
   ")"
 )
 
-levels(db$Geography_macro) <- result_geo$Label
+label_map <- setNames(result_geo$Label, result_geo$Label)
+
+db$Label <- factor(
+  result_geo$Label[match(db$Geography_macro, levs)],
+  levels = result_geo$Label
+)
 
 (plot_geo <- ggplot(data = result_geo) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]")))+
-    geom_jitter(data = db, aes(x = Geography_macro, y = Pearson_r),
+    ylab("")+
+    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
                 size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
-    ylim(-.5,1))
+    ylim(-1,1))
 
+# Taxon moderators ------------------------------------------------
+db$Taxon_macro <- relevel(db$Taxon_macro, "Multiple") #setting baseline
+
+model_taxa <- metafor::rma.mv(yi, vi, mods = ~ 0 + Taxon_macro, random = list(~1 | ID), data = db)
+
+#Extract estimates
+levs <- levels(db$Taxon_macro)
+
+result_taxa <- data.frame(
+  Label = levs,
+  b     = model_taxa$b,
+  ci.lb = model_taxa$ci.lb,
+  ci.ub = model_taxa$ci.ub,
+  ES    = ((exp(model_taxa$b)-1))/((exp(model_taxa$b)+1)),
+  L     = ((exp(model_taxa$ci.lb)-1)/(exp(model_taxa$ci.lb)+1)),
+  U     = ((exp(model_taxa$ci.ub)-1)/(exp(model_taxa$ci.ub)+1))
+)
+
+#rename the label
+result_taxa$Label <- paste0(
+  levs, " (",
+  sapply(levs, function(l) length(unique(db[db$Taxon_macro == l,]$ID))),
+  ", ",
+  sapply(levs, function(l) nrow(db[db$Taxon_macro == l,])),
+  ")"
+)
+
+label_map <- setNames(result_taxa$Label, result_taxa$Label)
+
+db$Label <- factor(
+  result_taxa$Label[match(db$Taxon_macro, levs)],
+  levels = result_taxa$Label
+)
+
+(plot_taxa <- ggplot(data = result_taxa) +
+    xlab("")+
+    ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
+                size = 0.3, color = "grey70", width = 0.05)+
+    geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-1,1))
 
 # Trait moderators ------------------------------------------------
-
 db$Independent <- paste(db$Independent_macro, db$Independent_zoomed, sep = " - ") |> as.factor()
 
 model_trait <- metafor::rma.mv(yi, vi, mods = ~ 0 + Independent, random = list(~1 | ID), data = db)
@@ -239,14 +292,111 @@ result_trait$Label <- paste0(
   ")"
 )
 
-levels(db$Independent) <- result_trait$Label
+result_trait$Category <- trimws(sub(" -.*$", "", result_trait$Label))
+
+label_map <- setNames(result_trait$Label, result_trait$Label)
+
+db$Label <- factor(
+  result_trait$Label[match(db$Independent, levs)],
+  levels = result_trait$Label
+)
 
 (plot_trait <- ggplot(data = result_trait) +
     xlab("")+
     ylab(expression(paste("Effect size [",italic("r"),"]")))+
-    geom_jitter(data = db, aes(x = Independent, y = Pearson_r),
+    geom_jitter(data = db, aes(x = Label, y = Pearson_r, fill = Independent_macro, color = Independent_macro),
+                size = 0.3, width = 0.05)+
+    geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U, fill = Category, color = Category), size = 1) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-1,1)+theme(legend.position = "none"))
+
+# Dependent moderators ---------------------------------------------
+model_dep <- metafor::rma.mv(yi, vi, mods = ~ 0 + Dependent_zoomed, random = list(~1 | ID), data = db)
+
+#Extract estimates
+levs <- levels(db$Dependent_zoomed)
+
+result_dep <- data.frame(
+  Label = levs,
+  b     = model_dep$b,
+  ci.lb = model_dep$ci.lb,
+  ci.ub = model_dep$ci.ub,
+  ES    = ((exp(model_dep$b)-1))/((exp(model_dep$b)+1)),
+  L     = ((exp(model_dep$ci.lb)-1)/(exp(model_dep$ci.lb)+1)),
+  U     = ((exp(model_dep$ci.ub)-1)/(exp(model_dep$ci.ub)+1))
+)
+
+#rename the label
+result_dep$Label <- paste0(
+  levs, " (",
+  sapply(levs, function(l) length(unique(db[db$Dependent_zoomed == l,]$ID))),
+  ", ",
+  sapply(levs, function(l) nrow(db[db$Dependent_zoomed == l,])),
+  ")"
+)
+
+label_map <- setNames(result_dep$Label, result_dep$Label)
+
+db$Label <- factor(
+  result_dep$Label[match(db$Dependent_zoomed, levs)],
+  levels = result_dep$Label
+)
+
+(plot_dep <- ggplot(data = result_dep) +
+    xlab("")+
+    ylab("")+
+    #ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
                 size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
-    ylim(-.5,1))
+    ylim(-1,1))
+
+#### 
+library("patchwork")
+
+left  <- plot_base_model
+
+middle <- wrap_plots(
+  plot_dep,
+  plot_trait,
+  nrow = 2
+)
+
+right <- wrap_plots(
+  plot_type,
+  plot_geo,
+  plot_taxa,
+  nrow = 3
+)
+
+design <- "
+  12
+  32
+  32
+  32
+  32
+"
+(left + middle + right) +
+  plot_layout(design = design) +
+  plot_annotation(tag_levels = list(c("A","B","","C")))
+
+
+pdf(file = "Figures/Figure_2.pdf", width = 11, height = 11)
+
+ggpubr::ggarrange(
+                  ggpubr::ggarrange(M1.venn, M2.venn, 
+                                    ncol = 2, hjust = -5, vjust = 4,
+                                    labels = c("B", "C")),
+                  common.legend = FALSE,
+                  heights = 1,
+                  hjust = -5,
+                  #align = "h",
+                  labels = c("A", ""),
+                  ncol = 1, nrow = 2) 
+
+dev.off()
+
+
