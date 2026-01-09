@@ -16,7 +16,7 @@
 # Loading R packages ------------------------------------------------------
 
 if(!require("pacman")) {install.packages("pacman")}
-pacman::p_load("dplyr","ggplot2","metafor","readxl", "gghalves")
+pacman::p_load("dplyr", "gghalves", "ggplot2","metafor", "patchwork", "readxl")
 
 # Settings ----------------------------------------------------------------
 
@@ -257,7 +257,7 @@ db$Label <- factor(
 
 (plot_taxa <- ggplot(data = result_taxa) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
     geom_jitter(data = db, aes(x = Label, y = Pearson_r),
                 size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
@@ -303,7 +303,7 @@ db$Label <- factor(
 
 (plot_trait <- ggplot(data = result_trait) +
     xlab("")+
-    ylab(expression(paste("Effect size [",italic("r"),"]")))+
+    ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
     geom_jitter(data = db, aes(x = Label, y = Pearson_r, fill = Independent_macro, color = Independent_macro),
                 size = 0.3, width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U, fill = Category, color = Category), size = 1) +
@@ -346,7 +346,6 @@ db$Label <- factor(
 (plot_dep <- ggplot(data = result_dep) +
     xlab("")+
     ylab("")+
-    #ylab(expression(paste("Effect size [",italic("r"),"]")))+
     geom_jitter(data = db, aes(x = Label, y = Pearson_r),
                 size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
@@ -354,8 +353,7 @@ db$Label <- factor(
     coord_flip()+
     ylim(-1,1))
 
-#### 
-library("patchwork")
+#### plotting
 
 left  <- plot_base_model
 
@@ -381,21 +379,15 @@ design <- "
 "
 (left + middle + right) +
   plot_layout(design = design) +
-  plot_annotation(tag_levels = list(c("A","B","","C")))
+  plot_annotation(tag_levels = list(c("A","C","","B")))
 
 
-pdf(file = "Figures/Figure_2.pdf", width = 11, height = 11)
+pdf(file = "Figures/Figure_1.pdf", width = 13, height = 9)
 
-ggpubr::ggarrange(
-                  ggpubr::ggarrange(M1.venn, M2.venn, 
-                                    ncol = 2, hjust = -5, vjust = 4,
-                                    labels = c("B", "C")),
-                  common.legend = FALSE,
-                  heights = 1,
-                  hjust = -5,
-                  #align = "h",
-                  labels = c("A", ""),
-                  ncol = 1, nrow = 2) 
+(left + middle + right) +
+  plot_layout(design = design) +
+  plot_annotation(tag_levels = list(c("A","C","","B")))
+
 
 dev.off()
 
