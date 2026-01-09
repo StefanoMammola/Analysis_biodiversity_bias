@@ -313,84 +313,6 @@ db$Label <- factor(
     coord_flip()+
     ylim(-1,1)+theme(legend.position = "none"))
 
-## --------------------------------------------------
-##  Hierarchical moderator
-## --------------------------------------------------
-
-db$Macro    <- factor(db$Independent_macro)
-db$Specific <- factor(db$Independent_zoomed)
-
-db$Ind_full <- interaction(db$Macro, db$Specific, sep = " - ", drop = TRUE)
-
-model_trait_hier <- rma.mv(yi, vi, mods   = ~ 0 + Macro / Specific, random = list(~1 | ID), data = db)
-
-X <- model.matrix(model_trait_hier)
-pred <- predict(model_trait_hier, newmods = X)
-
-result_trait <- unique(data.frame(
-  Macro    = db$Macro,
-  Specific = db$Specific,
-  Ind_full = db$Ind_full,
-  b        = pred$pred,
-  ci.lb    = pred$ci.lb,
-  ci.ub    = pred$ci.ub
-))
-
-result_trait$ES <- (exp(result_trait$b)    - 1) / (exp(result_trait$b)    + 1)
-result_trait$L  <- (exp(result_trait$ci.lb) - 1) / (exp(result_trait$ci.lb) + 1)
-result_trait$U  <- (exp(result_trait$ci.ub) - 1) / (exp(result_trait$ci.ub) + 1)
-
-# Final labels
-result_trait$n_studies <- mapply(
-  function(m, s)
-    length(unique(db$ID[db$Macro == m & db$Specific == s])),
-  result_trait$Macro, result_trait$Specific
-)
-
-result_trait$n_estimates <- mapply(
-  function(m, s)
-    sum(db$Macro == m & db$Specific == s),
-  result_trait$Macro, result_trait$Specific
-)
-
-result_trait$Label <- paste0(result_trait$Macro, " - ", result_trait$Specific," (", result_trait$n_studies, ", ", result_trait$n_estimates, ")")
-result_trait$Label <- factor(result_trait$Label, levels = sort(as.character(result_trait$Label)))
-
-db$Label <- factor(
-  result_trait$Label[match(db$Ind_full, result_trait$Ind_full)],
-  levels = result_trait$Label
-)
-
-ggplot(result_trait) +
-  xlab("") +
-  ylab(expression(paste(
-    "Effect size [", italic("r"), "]" %+-% "95% Confidence interval"
-  ))) +
-  
-  geom_pointrange(
-    aes(x = Label, y = ES, ymin = L, ymax = U,
-        color = Macro, fill = Macro),
-    size = 1
-  ) +
-  
-  geom_jitter(
-    data = db,
-    aes(x = Label, y = Pearson_r,
-        color = Macro, fill = Macro),
-    size = 0.3, width = 0.05
-  ) +
-  
-   geom_pointrange(
-    aes(x = Label, y = ES, ymin = L, ymax = U,
-        color = Macro, fill = Macro),
-    size = 1
-  ) +
-  
-  geom_hline(yintercept = 0, lty = 2, col = "grey50") +
-  coord_flip() +
-  ylim(-1, 1) +
-  theme(legend.position = "none")
-
 # Dependent moderators ---------------------------------------------
 model_dep <- metafor::rma.mv(yi, vi, mods = ~ 0 + Dependent_zoomed, random = list(~1 | ID), data = db)
 
@@ -469,9 +391,9 @@ pdf(file = "Figures/Figure_1.pdf", width = 13, height = 9)
 
 dev.off()
 
-
-
-
+####################################
+###### *** TESTING STUFF **** ######
+####################################
 
 ## Final interaction????
 
@@ -790,3 +712,82 @@ ggplot(newdat) +
     legend.position = "none",
     strip.text = element_text(face = "bold")
   )
+
+
+## --------------------------------------------------
+##  Hierarchical moderator
+## --------------------------------------------------
+
+db$Macro    <- factor(db$Independent_macro)
+db$Specific <- factor(db$Independent_zoomed)
+
+db$Ind_full <- interaction(db$Macro, db$Specific, sep = " - ", drop = TRUE)
+
+model_trait_hier <- rma.mv(yi, vi, mods   = ~ 0 + Macro / Specific, random = list(~1 | ID), data = db)
+
+X <- model.matrix(model_trait_hier)
+pred <- predict(model_trait_hier, newmods = X)
+
+result_trait <- unique(data.frame(
+  Macro    = db$Macro,
+  Specific = db$Specific,
+  Ind_full = db$Ind_full,
+  b        = pred$pred,
+  ci.lb    = pred$ci.lb,
+  ci.ub    = pred$ci.ub
+))
+
+result_trait$ES <- (exp(result_trait$b)    - 1) / (exp(result_trait$b)    + 1)
+result_trait$L  <- (exp(result_trait$ci.lb) - 1) / (exp(result_trait$ci.lb) + 1)
+result_trait$U  <- (exp(result_trait$ci.ub) - 1) / (exp(result_trait$ci.ub) + 1)
+
+# Final labels
+result_trait$n_studies <- mapply(
+  function(m, s)
+    length(unique(db$ID[db$Macro == m & db$Specific == s])),
+  result_trait$Macro, result_trait$Specific
+)
+
+result_trait$n_estimates <- mapply(
+  function(m, s)
+    sum(db$Macro == m & db$Specific == s),
+  result_trait$Macro, result_trait$Specific
+)
+
+result_trait$Label <- paste0(result_trait$Macro, " - ", result_trait$Specific," (", result_trait$n_studies, ", ", result_trait$n_estimates, ")")
+result_trait$Label <- factor(result_trait$Label, levels = sort(as.character(result_trait$Label)))
+
+db$Label <- factor(
+  result_trait$Label[match(db$Ind_full, result_trait$Ind_full)],
+  levels = result_trait$Label
+)
+
+ggplot(result_trait) +
+  xlab("") +
+  ylab(expression(paste(
+    "Effect size [", italic("r"), "]" %+-% "95% Confidence interval"
+  ))) +
+  
+  geom_pointrange(
+    aes(x = Label, y = ES, ymin = L, ymax = U,
+        color = Macro, fill = Macro),
+    size = 1
+  ) +
+  
+  geom_jitter(
+    data = db,
+    aes(x = Label, y = Pearson_r,
+        color = Macro, fill = Macro),
+    size = 0.3, width = 0.05
+  ) +
+  
+  geom_pointrange(
+    aes(x = Label, y = ES, ymin = L, ymax = U,
+        color = Macro, fill = Macro),
+    size = 1
+  ) +
+  
+  geom_hline(yintercept = 0, lty = 2, col = "grey50") +
+  coord_flip() +
+  ylim(-1, 1) +
+  theme(legend.position = "none")
