@@ -269,12 +269,12 @@ db$Label <- factor(
     ylim(-1,1))
 
 # Taxon moderators ------------------------------------------------
-db$Taxon_macro <- relevel(db$Taxon_macro, "Multiple") #setting baseline
+db$Taxon <- relevel(db$Taxon, "Multiple") #setting baseline
 
-model_taxa <- metafor::rma.mv(yi, vi, mods = ~ 0 + Taxon_macro, random = list(~1 | ID), data = db)
+model_taxa <- metafor::rma.mv(yi, vi, mods = ~ 0 + Taxon, random = list(~1 | ID), data = db)
 
 #Extract estimates
-levs <- levels(db$Taxon_macro)
+levs <- levels(db$Taxon)
 
 result_taxa <- data.frame(
   Label = levs,
@@ -289,16 +289,16 @@ result_taxa <- data.frame(
 #rename the label
 result_taxa$Label <- paste0(
   levs, " (",
-  sapply(levs, function(l) length(unique(db[db$Taxon_macro == l,]$ID))),
+  sapply(levs, function(l) length(unique(db[db$Taxon == l,]$ID))),
   ", ",
-  sapply(levs, function(l) nrow(db[db$Taxon_macro == l,])),
+  sapply(levs, function(l) nrow(db[db$Taxon == l,])),
   ")"
 )
 
 label_map <- setNames(result_taxa$Label, result_taxa$Label)
 
 db$Label <- factor(
-  result_taxa$Label[match(db$Taxon_macro, levs)],
+  result_taxa$Label[match(db$Taxon, levs)],
   levels = result_taxa$Label
 )
 
@@ -419,6 +419,7 @@ right <- wrap_plots(
 
 design <- "
   12
+  32
   32
   32
   32
@@ -836,3 +837,5 @@ ggplot(result_trait) +
   coord_flip() +
   ylim(-1, 1) +
   theme(legend.position = "none")
+
+
