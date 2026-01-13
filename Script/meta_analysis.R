@@ -4,7 +4,7 @@
 
 ##################
 # R script to generate the analysis
-# Analysis performed with R (v. XXX) and Rstudio (v. XXX)
+# Analysis performed with R (v. 4.4.1) and Rstudio (v. XXX)
 # Created by Stefano Mammola
 # Initiated 16/12/2025
 ##################
@@ -15,10 +15,8 @@
 
 # Loading R packages ------------------------------------------------------
 
-stringr, tidyr
-
 if(!require("pacman")) {install.packages("pacman")}
-pacman::p_load("dplyr", "gghalves", "ggplot2","metafor", "patchwork", "readxl")
+pacman::p_load("dplyr", "gghalves", "ggplot2","metafor", "patchwork","stringr","readxl","tidyr")
 
 # Settings ----------------------------------------------------------------
 
@@ -38,6 +36,9 @@ db <- readxl::read_excel("Data/Database_meta_analysis_bias.xlsx", na = "NA") |>
   dplyr::arrange(Pearson_r) 
 str(db)
 
+# db <- db[db$Independent_macro != "Taxonomic bias",]
+# db <- droplevels(db)
+
 #Distinct db
 db2 <- db |> 
   dplyr::distinct(ID, .keep_all = TRUE) |> 
@@ -53,8 +54,17 @@ nrow(db2) #78
 #Number of estimates
 nrow(db) #905
 
+#Average number of publication per study
+mean(table(db$ID))
+sd(table(db$ID))
+
 #Number of journals
 nlevels(db$Journal) #54
+
+#Range of years 
+range(db$Year)
+
+table(db$Taxon_macro)/sum(table(db$Taxon_macro))
 
 #Publication by year
 db2 |>
@@ -99,6 +109,41 @@ table(db2$Study_type) |>
 
 db$Pearson_r <- pmin(pmax(db$Pearson_r, -0.999), 0.999)
 db <- metafor::escalc(measure = "ZCOR", ri = Pearson_r, ni = N, data = db)
+
+# Publication bias --------------------------------------------------------
+
+#Funnel plot (aggregating to one estimate per study)
+dat_study <- aggregate(
+  cbind(yi, vi) ~ ID,
+  data = db,
+  FUN = mean
+)
+
+pdf(file = "Figures/Figure_S2.pdf", width = 5, height = 4)
+funnel(rma(yi, vi, data = dat_study))
+dev.off()
+
+# Egger regression
+db$SE <- sqrt(db$vi)
+
+model_egger <- rma.mv(
+  yi,
+  vi,
+  mods = ~ SE,
+  random = list(~1 | ID),
+  data = db
+)
+summary(model_egger) #A significant SE slope --> small-study effects
+
+# Time-lag bias
+model_time <- rma.mv(
+  yi,
+  vi,
+  mods = ~ scale(Year),
+  random = list(~1 | ID),
+  data = db
+)
+summary(model_time)
 
 # Base model - All estimates ----------------------------------------------
 
