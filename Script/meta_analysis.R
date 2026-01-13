@@ -404,36 +404,37 @@ db$Label <- factor(
 
 left  <- plot_base_model
 
-middle <- wrap_plots(
+right <- wrap_plots(
   plot_dep,
   plot_trait,
   nrow = 2
 )
 
-right <- wrap_plots(
-  plot_type,
+left_up <- plot_type
+
+left_low <- wrap_plots(
   plot_geo,
   plot_taxa,
-  nrow = 3
+  nrow = 2
 )
 
 design <- "
   12
   32
-  32
-  32
-  32
-  32
+  42
+  42
+  42
+  42
 "
-(left + middle + right) +
+(left + right + left_up + left_low) +
   plot_layout(design = design) +
-  plot_annotation(tag_levels = list(c("A","C","","B")))
+  plot_annotation(tag_levels = list(c("A","D","","B","C")))
 
 pdf(file = "Figures/Figure_1.pdf", width = 13, height = 9)
 
-(left + middle + right) +
+(left + right + left_up + left_low) +
   plot_layout(design = design) +
-  plot_annotation(tag_levels = list(c("A","C","","B")))
+  plot_annotation(tag_levels = list(c("A","D","","B","C")))
 
 dev.off()
 
