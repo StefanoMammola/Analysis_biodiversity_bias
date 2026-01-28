@@ -271,6 +271,8 @@ rownames(result_for_plot) <- NULL
 
 # plot base model ---------------------------------------------------------
 
+my_colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e")
+
 #subsetting the database for base plot estimates
 result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",] |> droplevels()
 result_tot$label_plot <- result_tot$label
@@ -296,9 +298,9 @@ db_subset$label_plot  <- factor(db_subset$label_plot, levels = rev(result_tot$la
   
   gghalves::geom_half_violin(
     data = db_subset,
-    aes(x = label_plot, y = Pearson_r),
+    aes(x = label_plot, y = Pearson_r, fill = label_plot),
     side = "r",
-    fill = "grey70",
+    #fill = "grey70",
     color = NA,
     width = 0.6,
     trim = FALSE,
@@ -307,9 +309,9 @@ db_subset$label_plot  <- factor(db_subset$label_plot, levels = rev(result_tot$la
   
   geom_jitter(
     data = db_subset,
-    aes(x = label_plot, y = Pearson_r),
+    aes(x = label_plot, y = Pearson_r, col = label_plot),
     size = 0.3,
-    color = "grey70",
+    #color = "grey70",
     width = 0.05
   ) +
   
@@ -323,14 +325,42 @@ db_subset$label_plot  <- factor(db_subset$label_plot, levels = rev(result_tot$la
     
   geom_hline(yintercept = 0, lty = 2, col = "grey50") +
   coord_flip() +
+  scale_fill_manual(values = my_colors)+
+  scale_color_manual(values = my_colors)+
   ylim(-1, 1) +
   xlab("") +
-  ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))
+  ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
+  theme(legend.position = "none")
 )
 
-#sub independent
+#subset for type
+result_ind <- result_for_plot[result_for_plot$Moderator_group == "Independent_zoomed",] |> droplevels()
 
+result_ind$Moderator2 <- paste(result_ind$label, result_ind$Moderator ,sep = " - ")
 
+result_ind$Moderator2 <- factor(result_ind$Moderator2,
+                               levels = rev(result_ind$Moderator2))
+
+(plot_ind <- ggplot(
+  result_ind,
+  aes(y = Moderator2, x = ES, xmin = L, xmax = U, col = label)
+) +
+    geom_pointrange(size = 0.9) +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.2, size = 3,color = "grey30") +
+    geom_vline(xintercept = 0, lty = 2, color = "grey50") +
+    coord_cartesian(xlim = c(-1, 1)) +
+    xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
+    ylab("")+
+    scale_fill_manual(values = rev(my_colors))+
+    scale_color_manual(values = rev(my_colors))+
+    theme(legend.position = "none"))
+
+pdf(file = "Figures/Figure_1.pdf", width = 11, height = 8)
+
+(plot_base_model + plot_ind) +
+  plot_annotation(tag_levels = list(c("A","B")))
+
+dev.off()
 
 # Now plot of each moderator ---------------------------------------------------
 
@@ -475,16 +505,7 @@ dev.off()
    ylim(-1,1))
 
 
-#subset
-result_trait <- result_for_plot[result_for_plot$Moderator_group == "Independent_zoomed",]
 
-(plot_trait <- ggplot(data = result_trait, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
-    xlab("")+
-    ylab("")+
-    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
-    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
-    coord_flip()+
-    ylim(-1,1))
 
 
 
