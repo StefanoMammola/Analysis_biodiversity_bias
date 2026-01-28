@@ -201,6 +201,43 @@ db_subset <- db
 db_subset <- db_subset[db_subset$Independent_macro != "Other",] |> droplevels()
 
 ########################@###################################################
+# Publication bias --------------------------------------------------------
+########################@###################################################
+
+#Funnel plot (aggregating to one estimate per study)
+dat_study <- aggregate(
+  cbind(yi, vi) ~ ID,
+  data = db,
+  FUN = mean
+)
+
+pdf(file = "Figures/Figure_S2.pdf", width = 5, height = 4)
+metafor::funnel(metafor::rma(yi, vi, data = dat_study))
+dev.off()
+
+# Egger regression
+db$SE <- sqrt(db$vi)
+
+model_egger <- rma.mv(
+  yi,
+  vi,
+  mods = ~ SE,
+  random = list(~1 | ID),
+  data = db
+)
+summary(model_egger) #A significant SE slope --> small-study effects
+
+# Time-lag bias
+model_time <- rma.mv(
+  yi,
+  vi,
+  mods = ~ scale(Year),
+  random = list(~1 | ID),
+  data = db
+)
+summary(model_time)
+
+########################@###################################################
 # Generating all models in a loop -----------------------------------------
 ########################@###################################################
 
@@ -355,7 +392,7 @@ result_ind$Moderator2 <- factor(result_ind$Moderator2,
     scale_color_manual(values = rev(my_colors))+
     theme(legend.position = "none"))
 
-pdf(file = "Figures/Figure_1.pdf", width = 11, height = 8)
+pdf(file = "Figures/Figure_1.pdf", width = 13, height =7)
 
 (plot_base_model + plot_ind) +
   plot_annotation(tag_levels = list(c("A","B")))
@@ -494,70 +531,5 @@ pdf(file = "Figures/Figure_2.pdf", width = 10, height = 10)
 
 dev.off()
 
-# plot independent zoomed -----------------------------------------------------
 
-(plot_trait <- ggplot(data = result_trait, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
-   xlab("")+
-   ylab("")+
-   geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
-   geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
-   coord_flip()+
-   ylim(-1,1))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Funnel plot (aggregating to one estimate per study)
-dat_study <- aggregate(
-  cbind(yi, vi) ~ ID,
-  data = db,
-  FUN = mean
-)
-
-pdf(file = "Figures/Figure_S2.pdf", width = 5, height = 4)
-metafor::funnel(metafor::rma(yi, vi, data = dat_study))
-dev.off()
-
-# Egger regression
-db$SE <- sqrt(db$vi)
-
-model_egger <- rma.mv(
-  yi,
-  vi,
-  mods = ~ SE,
-  random = list(~1 | ID),
-  data = db
-)
-summary(model_egger) #A significant SE slope --> small-study effects
-
-# Time-lag bias
-model_time <- rma.mv(
-  yi,
-  vi,
-  mods = ~ scale(Year),
-  random = list(~1 | ID),
-  data = db
-)
-summary(model_time)
-
-(plot1 <- ggplot(data= result_for_plot, aes(x=label, y=ES, ymin=L, ymax=U, col= Discipline)) +
-    geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
-    #geom_hline(yintercept=0.373, lty=3, col="grey70") +  
-    geom_pointrange(size= 1) + ylim(-.3,0.5) + coord_flip())
 
