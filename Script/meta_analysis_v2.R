@@ -209,7 +209,6 @@ db_subset <- db_subset[db_subset$Independent_macro != "Other",] |> droplevels()
 moderators <- c(
   "Study_type",
   "Geography_macro",
-  "Taxon_macro",
   "Dependent_zoomed",
   "Independent_zoomed"
 )
@@ -272,32 +271,108 @@ for (i in levels(db_subset$Independent_macro)) {
 result_for_plot <- do.call(rbind, result_for_plot)
 rownames(result_for_plot) <- NULL
 
+result_for_plot <- result_for_plot |> dplyr::mutate_if(is.character, as.factor)
+
 # plot base model ---------------------------------------------------------
 
+#subset
 result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",]
 
-(plot_base_model <- ggplot(data = result_tot) +
+#rename label in the main db
+db_subset$label <- db_subset$Independent_macro
+levels(db_subset$label) <- levels(result_tot$label)
+
+#sort
+result_tot$label <- factor(result_tot$label, levels = rev(result_tot$label))
+db_subset$label  <- factor(db_subset$label, levels = rev(result_tot$label))
+
+#plot
+(plot_base_model <- ggplot() +
+  
+  gghalves::geom_half_violin(
+    data = db_subset,
+    aes(x = label, y = Pearson_r),
+    side = "r",
+    fill = "grey70",
+    color = NA,
+    width = 0.6,
+    trim = FALSE,
+    position = position_nudge(x = 0.1)
+  ) +
+  
+  geom_jitter(
+    data = db_subset,
+    aes(x = label, y = Pearson_r),
+    size = 0.3,
+    color = "grey70",
+    width = 0.05
+  ) +
+  
+  geom_pointrange(
+    data = result_tot,
+    aes(x = label, y = ES, ymin = L, ymax = U),
+    size = 1
+  ) +
+  
+  geom_hline(yintercept = 0, lty = 2, col = "grey50") +
+  coord_flip() +
+  ylim(-1, 1) +
+  xlab("") +
+  ylab("")
+)
+
+# plot type ---------------------------------------------------------
+
+#subset
+result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
+
+(plot_type <- ggplot(data = result_type, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
    xlab("")+
    ylab("")+
-   gghalves::geom_half_violin(
-     data = db,
-     aes(x = result_tot$label, y = Pearson_r),
-     side = "r",     
-     fill = "grey70",
-     color = NA,
-     width = 0.6,
-     trim = FALSE,
-     position = position_nudge(x = 0.1))+
-   
-   geom_jitter(data = db, aes(x = result_tot$label, y = Pearson_r), 
-               size = 0.3, color = "grey70", width = 0.05)+
-   geom_pointrange(aes(x = label, y = ES, ymin = L, ymax = U), size = 1) +
+   geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
    coord_flip()+
    ylim(-1,1))
 
 
+# plot independent zoomed -----------------------------------------------------
 
+#subset
+result_trait <- result_for_plot[result_for_plot$Moderator_group == "Independent_zoomed",]
+
+(plot_trait <- ggplot(data = result_trait, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
+    xlab("")+
+    ylab("")+
+    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-1,1))
+
+# plot dependent zoomed -----------------------------------------------------
+
+#subset
+result_dep <- result_for_plot[result_for_plot$Moderator_group == "Dependent_zoomed",]
+
+(plot_dep <- ggplot(data = result_dep, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
+    xlab("")+
+    ylab("")+
+    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-1,1))
+
+# plot dependent zoomed -----------------------------------------------------
+
+#subset
+result_taxon <- result_for_plot[result_for_plot$Moderator_group == "Taxon_macro",]
+
+(plot_taxon <- ggplot(data = result_taxon, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
+    xlab("")+
+    ylab("")+
+    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
+    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
+    coord_flip()+
+    ylim(-1,1))
 
 
 
