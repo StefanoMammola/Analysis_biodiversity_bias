@@ -21,7 +21,7 @@ pacman::p_load("dplyr", "gghalves", "ggplot2","metafor", "patchwork","stringr","
 
 # Function ----------------------------------------------------------------
 
-#Fucntion to model with moderators and extract results
+#Function to model with moderators and extract results
 extract_moderator_results <- function(data, moderator, i,
                                       min_n = 5,
                                       min_ID = 3) {
@@ -30,13 +30,11 @@ extract_moderator_results <- function(data, moderator, i,
   if (nrow(data) < min_n || length(unique(data$ID)) < min_ID) {
     return(
       data.frame(
-        label = paste0(
-          i, " (",
-          length(unique(data$ID)), ", ",
-          nrow(data), ")"
-        ),
+        label = i,
         Moderator_group = moderator,
-        Moderator = NA,
+        Moderator = NA, 
+        N_study = NA,
+        N_est   = NA,
         b     = NA,
         ci.lb = NA,
         ci.ub = NA,
@@ -50,6 +48,7 @@ extract_moderator_results <- function(data, moderator, i,
   
   mods_formula <- as.formula(paste0("~ 0 + ", moderator))
   
+  # Try fitting the model
   model <- tryCatch(
     metafor::rma.mv(
       yi, vi,
@@ -65,13 +64,11 @@ extract_moderator_results <- function(data, moderator, i,
   if (is.null(model)) {
     return(
       data.frame(
-        label = paste0(
-          i, " (",
-          length(unique(data$ID)), ", ",
-          nrow(data), ")"
-        ),
+        label = i,
         Moderator_group = moderator,
-        Moderator = NA,
+        Moderator = NA, 
+        N_study = NA,
+        N_est   = NA,
         b     = NA,
         ci.lb = NA,
         ci.ub = NA,
@@ -83,23 +80,25 @@ extract_moderator_results <- function(data, moderator, i,
     )
   }
   
+  # Extract moderator levels
+  levs <- sub(paste0("^", moderator), "", rownames(model$beta))
+  
+  # Compute number of studies and estimates per level
+  N_study <- sapply(levs, function(l) length(unique(data$ID[data[[moderator]] == l])))
+  N_est   <- sapply(levs, function(l) sum(data[[moderator]] == l, na.rm = TRUE))
+  
+  # Build output
   out <- data.frame(
-    label = paste0(
-      i, " (",
-      length(unique(data$ID)), ", ",
-      nrow(data), ")"
-    ),
+    label = i,
     Moderator_group = moderator,
-    Moderator = sub(
-      paste0("^", moderator),
-      "",
-      rownames(model$beta)
-    ),
+    Moderator = levs,
+    N_study = N_study,
+    N_est   = N_est,
     b     = model$b,
     ci.lb = model$ci.lb,
     ci.ub = model$ci.ub,
     status = "ok"
-  )
+  ) |> dplyr::mutate_if(is.character, as.factor)
   
   out$ES <- (exp(out$b)     - 1) / (exp(out$b)     + 1)
   out$L  <- (exp(out$ci.lb) - 1) / (exp(out$ci.lb) + 1)
@@ -208,6 +207,7 @@ db_subset <- db_subset[db_subset$Independent_macro != "Other",] |> droplevels()
 # Moderators
 moderators <- c(
   "Study_type",
+  "Taxon",
   "Geography_macro",
   "Dependent_zoomed",
   "Independent_zoomed"
@@ -234,18 +234,16 @@ for (i in levels(db_subset$Independent_macro)) {
   )
   
   result_base <- data.frame(
-    label = paste0(
-      i, " (",
-      length(unique(data_i$ID)), ", ",
-      nrow(data_i), ")"
-    ),
+    label = i,
     Moderator_group = "Base model",
     Moderator = "Overall",
+    N_study = length(unique(data_i$ID)),
+    N_est   = nrow(data_i),
     b     = model_base$b,
     ci.lb = model_base$ci.lb,
     ci.ub = model_base$ci.ub,
     status = "ok"
-  )
+  ) |> dplyr::mutate_if(is.character, as.factor)
   
   result_base$ES <- (exp(result_base$b)     - 1) / (exp(result_base$b)     + 1)
   result_base$L  <- (exp(result_base$ci.lb) - 1) / (exp(result_base$ci.lb) + 1)
@@ -271,27 +269,34 @@ for (i in levels(db_subset$Independent_macro)) {
 result_for_plot <- do.call(rbind, result_for_plot)
 rownames(result_for_plot) <- NULL
 
-result_for_plot <- result_for_plot |> dplyr::mutate_if(is.character, as.factor)
-
 # plot base model ---------------------------------------------------------
 
-#subset
-result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",]
+#subsetting the database for base plot estimates
+result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",] |> droplevels()
+result_tot$label_plot <- result_tot$label
+
+# #adding sample size to label
+# result_tot$label_plot <- paste0(result_tot$label, 
+#                                 " (",
+#                                 result_tot$N_study, 
+#                                 ", ",
+#                                 result_tot$N_est, 
+#                                 ")") |> as.factor()
 
 #rename label in the main db
-db_subset$label <- db_subset$Independent_macro
-levels(db_subset$label) <- levels(result_tot$label)
+db_subset$label_plot <- db_subset$Independent_macro
+levels(db_subset$label_plot) <- levels(result_tot$label_plot)
 
 #sort
-result_tot$label <- factor(result_tot$label, levels = rev(result_tot$label))
-db_subset$label  <- factor(db_subset$label, levels = rev(result_tot$label))
+result_tot$label_plot <- factor(result_tot$label_plot, levels = rev(result_tot$label_plot))
+db_subset$label_plot  <- factor(db_subset$label_plot, levels = rev(result_tot$label_plot))
 
 #plot
 (plot_base_model <- ggplot() +
   
   gghalves::geom_half_violin(
     data = db_subset,
-    aes(x = label, y = Pearson_r),
+    aes(x = label_plot, y = Pearson_r),
     side = "r",
     fill = "grey70",
     color = NA,
@@ -302,7 +307,7 @@ db_subset$label  <- factor(db_subset$label, levels = rev(result_tot$label))
   
   geom_jitter(
     data = db_subset,
-    aes(x = label, y = Pearson_r),
+    aes(x = label_plot, y = Pearson_r),
     size = 0.3,
     color = "grey70",
     width = 0.05
@@ -310,23 +315,158 @@ db_subset$label  <- factor(db_subset$label, levels = rev(result_tot$label))
   
   geom_pointrange(
     data = result_tot,
-    aes(x = label, y = ES, ymin = L, ymax = U),
+    aes(x = label_plot, y = ES, ymin = L, ymax = U),
     size = 1
   ) +
-  
+    
+  geom_text(data = result_tot, aes( y = -Inf, x = label_plot, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 3,color = "grey30") +
+    
   geom_hline(yintercept = 0, lty = 2, col = "grey50") +
   coord_flip() +
   ylim(-1, 1) +
   xlab("") +
-  ylab("")
+  ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))
 )
 
-# plot type ---------------------------------------------------------
+#sub independent
 
-#subset
+
+
+# Now plot of each moderator ---------------------------------------------------
+
+x_limits <- c(-0.8, 0.8)
+
+#subset for type
 result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
 
-(plot_type <- ggplot(data = result_type, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
+(plot_type <- ggplot(
+  result_type,
+  aes(y = Moderator, x = ES, xmin = L, xmax = U)
+) +
+  geom_pointrange(size = 0.9) +
+  geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+  geom_vline(xintercept = 0, lty = 2, color = "grey50") +
+  facet_wrap(~ label, nrow = 1) +
+  coord_cartesian(xlim = x_limits) +
+  xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
+  ylab("Methodology"))
+
+#subset for dependent
+result_dep <- result_for_plot[result_for_plot$Moderator_group == "Dependent_zoomed",]
+
+result_dep$Moderator <- factor(result_dep$Moderator,
+                             levels = levels(result_dep$Moderator))
+
+(plot_dep <- ggplot(
+  result_dep,
+  aes(y = Moderator, x = ES, xmin = L, xmax = U)
+) +
+    geom_pointrange(size = 0.9) +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_vline(xintercept = 0, lty = 2, color = "grey50") +
+    facet_wrap(~ label, nrow = 1) +
+    coord_cartesian(xlim = x_limits) +
+    xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
+    ylab("Dependent variable"))
+
+#subset for geography
+result_geo <- result_for_plot[result_for_plot$Moderator_group == "Geography_macro",]
+
+#Sort
+result_geo$Moderator <- factor(result_geo$Moderator,
+                           levels = rev(c("Global",
+                                          "Africa",
+                                          "Asia",
+                                          "Europe",
+                                          "N-America",
+                                          "CS-America",
+                                          "Oceania")))
+
+(plot_geo <- ggplot(
+  result_geo,
+  aes(y = Moderator, x = ES, xmin = L, xmax = U)
+) +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_pointrange(size = 0.9) +
+    geom_vline(xintercept = 0, lty = 2, color = "grey50") +
+    facet_wrap(~ label, nrow = 1) +
+    coord_cartesian(xlim = x_limits) +
+    xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
+    ylab("Geography"))
+
+#subset for taxonomy
+result_taxa <- result_for_plot[result_for_plot$Moderator_group == "Taxon",]
+
+result_taxa$Moderator <- factor(result_taxa$Moderator,
+                            levels = rev(c("Multiple",
+                                           "Plants",
+                                           "Vertebrates",
+                                           "Invertebrates",
+                                           "Amphibians",
+                                           "Birds",
+                                           "Fish",
+                                           "Mammals",
+                                           "Reptiles")))
+
+(plot_taxa <- ggplot(
+  result_taxa,
+  aes(y = Moderator, x = ES, xmin = L, xmax = U)
+) +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_pointrange(size = 0.9) +
+    geom_vline(xintercept = 0, lty = 2, color = "grey50") +
+    facet_wrap(~ label, nrow = 1) +
+    coord_cartesian(xlim = x_limits) +
+    xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
+    ylab("Taxon (versus control)"))
+
+#Final plot
+
+#remove strip & xaxis as needed from plots
+plot_dep  <- plot_dep  + theme(strip.text = element_blank())
+plot_geo  <- plot_geo  + theme(strip.text = element_blank())
+plot_taxa <- plot_taxa + theme(strip.text = element_blank())
+
+plot_type <- plot_type + theme(
+  axis.text.x  = element_blank(),
+  axis.title.x = element_blank()
+)
+
+plot_dep <- plot_dep + theme(
+  axis.text.x  = element_blank(),
+  axis.title.x = element_blank()
+)
+
+plot_geo <- plot_geo + theme(
+  axis.text.x  = element_blank(),
+  axis.title.x = element_blank()
+)
+
+#Assemble
+library("patchwork")
+
+pdf(file = "Figures/Figure_2.pdf", width = 10, height = 10)
+
+(final_plot <- 
+  plot_type +
+  plot_dep +
+  plot_geo +
+  plot_taxa +
+  plot_layout(
+    ncol = 1,
+    heights = c(.3, .5, .8, 1)  # tweak depending on number of rows
+  ) +
+  theme(
+    legend.position = "none",
+    strip.background = element_rect(fill = "grey90"),
+    panel.grid.major.y = element_blank()
+  ))
+
+dev.off()
+
+# plot independent zoomed -----------------------------------------------------
+
+(plot_trait <- ggplot(data = result_trait, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
    xlab("")+
    ylab("")+
    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
@@ -334,8 +474,6 @@ result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
    coord_flip()+
    ylim(-1,1))
 
-
-# plot independent zoomed -----------------------------------------------------
 
 #subset
 result_trait <- result_for_plot[result_for_plot$Moderator_group == "Independent_zoomed",]
@@ -348,31 +486,9 @@ result_trait <- result_for_plot[result_for_plot$Moderator_group == "Independent_
     coord_flip()+
     ylim(-1,1))
 
-# plot dependent zoomed -----------------------------------------------------
 
-#subset
-result_dep <- result_for_plot[result_for_plot$Moderator_group == "Dependent_zoomed",]
 
-(plot_dep <- ggplot(data = result_dep, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
-    xlab("")+
-    ylab("")+
-    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
-    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
-    coord_flip()+
-    ylim(-1,1))
 
-# plot dependent zoomed -----------------------------------------------------
-
-#subset
-result_taxon <- result_for_plot[result_for_plot$Moderator_group == "Taxon_macro",]
-
-(plot_taxon <- ggplot(data = result_taxon, aes(x = Moderator, y = ES, ymin = L, ymax = U, col = label), ) +
-    xlab("")+
-    ylab("")+
-    geom_pointrange(size = 1, position = position_dodge(width = 0.6)) +
-    geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
-    coord_flip()+
-    ylim(-1,1))
 
 
 
