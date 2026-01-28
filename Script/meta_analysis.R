@@ -120,7 +120,7 @@ dat_study <- aggregate(
 )
 
 pdf(file = "Figures/Figure_S2.pdf", width = 5, height = 4)
-funnel(rma(yi, vi, data = dat_study))
+metafor::funnel(metafor::rma(yi, vi, data = dat_study))
 dev.off()
 
 # Egger regression
@@ -216,9 +216,8 @@ db$Label <- factor(
 (plot_type <- ggplot(data = result_type) +
     xlab("")+
     ylab("")+
-    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
-                 size = 0.3, color = "grey70", width = 0.05)+
-    
+    # geom_jitter(data = db, aes(x = Label, y = Pearson_r),
+    #              size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
@@ -258,11 +257,22 @@ db$Label <- factor(
   levels = result_geo$Label
 )
 
+#Sort
+result_geo$Label <- factor(result_geo$Label,
+                   levels = rev(c("Global (32, 377)",
+                              "Africa (3, 53)",
+                              "Asia (3, 56)",
+                              "Europe (30, 189)",
+                              "N-America (9, 98)",
+                              "CS-America (5, 71)",
+                              "Oceania (4, 61)")))
+
+#Plot
 (plot_geo <- ggplot(data = result_geo) +
     xlab("")+
     ylab("")+
-    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
-                size = 0.3, color = "grey70", width = 0.05)+
+    # geom_jitter(data = db, aes(x = Label, y = Pearson_r),
+    #             size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
@@ -302,23 +312,42 @@ db$Label <- factor(
   levels = result_taxa$Label
 )
 
+#Sort
+result_taxa$Label <- factor(result_taxa$Label,
+                           levels = rev(c("Multiple (20, 104)",
+                                          "Plants (21, 141)",
+                                          "Vertebrates (5, 29)",
+                                          "Invertebrates (6, 40)",
+                                          "Amphibians (4, 87)",
+                                          "Birds (18, 216)",
+                                          "Fish (4, 29)",
+                                          "Mammals (14, 168)",
+                                          "Reptiles (4, 91)")))
+
+#plot
 (plot_taxa <- ggplot(data = result_taxa) +
     xlab("")+
     ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
-    geom_jitter(data = db, aes(x = Label, y = Pearson_r),
-                size = 0.3, color = "grey70", width = 0.05)+
+    # geom_jitter(data = db, aes(x = Label, y = Pearson_r),
+    #             size = 0.3, color = "grey70", width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
     ylim(-1,1))
 
 # Trait moderators ------------------------------------------------
-db$Independent <- paste(db$Independent_macro, db$Independent_zoomed, sep = " - ") |> as.factor()
 
-model_trait <- metafor::rma.mv(yi, vi, mods = ~ 0 + Independent, random = list(~1 | ID), data = db)
+#dropping general estimates on taxonomic bias without specific traits
+db_subset <- db
+db_subset <- db_subset[db_subset$Independent_macro != "Taxonomic bias",]
+db_subset <- db_subset[db_subset$Independent_macro != "Other",] |> droplevels()
+
+db_subset$Independent <- paste(db_subset$Independent_macro, db_subset$Independent_zoomed, sep = " - ") |> as.factor()
+
+model_trait <- metafor::rma.mv(yi, vi, mods = ~ 0 + Independent, random = list(~ 1 | ID), data = db_subset)
 
 #Extract estimates
-levs <- levels(db$Independent)
+levs <- levels(db_subset$Independent)
 
 result_trait <- data.frame(
   Label = levs,
@@ -333,9 +362,9 @@ result_trait <- data.frame(
 #rename the label
 result_trait$Label <- paste0(
   levs, " (",
-  sapply(levs, function(l) length(unique(db[db$Independent == l,]$ID))),
+  sapply(levs, function(l) length(unique(db_subset[db_subset$Independent == l,]$ID))),
   ", ",
-  sapply(levs, function(l) nrow(db[db$Independent == l,])),
+  sapply(levs, function(l) nrow(db_subset[db_subset$Independent == l,])),
   ")"
 )
 
@@ -343,20 +372,25 @@ result_trait$Category <- trimws(sub(" -.*$", "", result_trait$Label))
 
 label_map <- setNames(result_trait$Label, result_trait$Label)
 
-db$Label <- factor(
-  result_trait$Label[match(db$Independent, levs)],
+db_subset$Label <- factor(
+  result_trait$Label[match(db_subset$Independent, levs)],
   levels = result_trait$Label
 )
 
+#Sort
+result_trait$Label <- factor(result_trait$Label,
+                            levels = rev(result_trait$Label))
+
+#plot
 (plot_trait <- ggplot(data = result_trait) +
     xlab("")+
     ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
-    geom_jitter(data = db, aes(x = Label, y = Pearson_r, fill = Independent_macro, color = Independent_macro),
-                size = 0.3, width = 0.05)+
+    # geom_jitter(data = db_subset, aes(x = Label, y = Pearson_r, fill = Independent_macro, color = Independent_macro),
+    #             size = 0.3, width = 0.05)+
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U, fill = Category, color = Category), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
-    ylim(-1,1)+theme(legend.position = "none"))
+    ylim(-.3,.5)+theme(legend.position = "none"))
 
 # Dependent moderators ---------------------------------------------
 model_dep <- metafor::rma.mv(yi, vi, mods = ~ 0 + Dependent_zoomed, random = list(~1 | ID), data = db)
@@ -390,6 +424,11 @@ db$Label <- factor(
   levels = result_dep$Label
 )
 
+#Sort
+result_trait$Label <- factor(result_trait$Label,
+                             levels = rev(result_trait$Label))
+
+#plot
 (plot_dep <- ggplot(data = result_dep) +
     xlab("")+
     ylab("")+
@@ -398,7 +437,7 @@ db$Label <- factor(
     geom_pointrange(aes(x = Label, y = ES, ymin = L, ymax = U), size = 1) +
     geom_hline(yintercept = 0, lty = 2, col = "grey50") +  
     coord_flip()+
-    ylim(-1,1))
+    ylim(-.3,1))
 
 # General figure ----------------------------------------------------------
 
@@ -438,405 +477,56 @@ pdf(file = "Figures/Figure_1.pdf", width = 13, height = 9)
 
 dev.off()
 
-####################################
-###### *** TESTING STUFF **** ######
-####################################
+# test --------------------------------------------------------------------
 
-## Final interaction????
+#dropping general estimates on taxonomic bias without specific traits
+db_subset <- db
+db_subset <- db_subset[db_subset$Independent_macro != "Taxonomic bias",]
+db_subset <- db_subset[db_subset$Independent_macro != "Other",] |> droplevels()
 
-# All possible combinations
-all_combinations <- expand.grid(
-  Ind = unique(db$Independent_macro),
-  Dep = unique(db$Dependent_zoomed),
-  stringsAsFactors = FALSE
-)
+db_subset$Independent <- paste(db_subset$Independent_macro, db_subset$Independent_zoomed, sep = " - ") |> as.factor()
 
-# Count how many studies / estimates exist for each combination
-combination_counts <- all_combinations %>%
-  rowwise() %>%
-  mutate(
-    n_studies = length(unique(db$ID[db$Independent_macro == Ind & db$Dependent_zoomed == Dep])),
-    n_estimates = sum(db$Independent_macro == Ind & db$Dependent_zoomed == Dep),
-    present = n_studies > 0  # TRUE if this combination exists in your data
-  )
+SUBSET    <- list()
+MODEL     <- list()
 
+result_for_plot <- data.frame(label = NULL,
+                              b     = NULL,
+                              ci.lb = NULL,
+                              ci.ub = NULL,
+                              ES    = NULL,
+                              L     = NULL,
+                              U     = NULL)
 
-db$Macro <- db$Independent_macro
-db$Zoomed <- db$Independent_zoomed
-db$Dep <- db$Dependent_zoomed
+predictors_to_analyse <- levels(db_subset$Independent)
 
-db$Ind <- interaction(db$Macro, db$Zoomed, sep = " - ", drop = TRUE)
-
-model_interaction <- metafor::rma.mv(yi, vi, mods = ~ 0 + Ind * Dep, random = list(~1 | ID), data = db)
-
-result_interaction <- unique(data.frame(
-  Label = rownames(model_interaction$b),
-  b        = model_interaction$b,
-  ci.lb    = model_interaction$ci.lb,
-  ci.ub    = model_interaction$ci.ub
-))
-
-result_interaction$ES <- (exp(result_interaction$b)    - 1) / (exp(result_interaction$b)    + 1)
-result_interaction$L  <- (exp(result_interaction$ci.lb) - 1) / (exp(result_interaction$ci.lb) + 1)
-result_interaction$U  <- (exp(result_interaction$ci.ub) - 1) / (exp(result_interaction$ci.ub) + 1)
-
-result_interaction <- result_interaction |>
-   dplyr::filter(str_detect(Label, ":")) |>
-  tidyr::separate(Label, into = c("Ind", "Dep"), sep = ":") |>
-  dplyr::mutate(
-    Ind = str_remove(Ind, "^(Ind|Dep)"),
-    Dep = str_remove(Dep, "^(Ind|Dep)")
-  )
-
-# Final labels
-result_interaction$n_studies <- mapply(
-  function(m, s)
-    length(unique(db$ID[db$Ind == m & db$Dep == s])),
-  result_interaction$Ind, result_interaction$Dep
-)
-
-result_interaction$n_estimates <- mapply(
-  function(m, s)
-    sum(db$Ind == m & db$Dep == s),
-  result_interaction$Ind, result_interaction$Dep
-)
-
-result_interaction$Label <- paste0(result_interaction$Ind, " (", result_interaction$n_studies, ", ", result_interaction$n_estimates, ")")
-result_interaction$Label <- factor(result_interaction$Label, levels = sort(as.character(result_interaction$Label)))
-
-ggplot(result_interaction) +
-  facet_grid(. ~ Dep, scales = "fixed", space = "fixed") +
-  geom_pointrange(
-    aes(x = Ind, y = ES, ymin = L, ymax = U),
-    size = 1
-  ) +
-  geom_hline(yintercept = 0, lty = 2, col = "grey50") +
-  coord_flip() +
-  scale_x_discrete(drop = FALSE) +
-  ylim(-.6, .5) +
-  xlab("") +
-  ylab(expression(
-    paste("Effect size [", italic("r"), "] ± 95% CI")
-  )) +
-  theme(legend.position = "none")
-
-
-library(metafor)
-library(dplyr)
-library(ggplot2)
-
-## ---------------------------
-## 1. Prepare factors
-## ---------------------------
-
-db <- db %>%
-  mutate(
-    Ind = interaction(
-      Independent_macro,
-      Independent_zoomed,
-      sep = " - ",
-      drop = TRUE
-    ),
-    Dep = factor(Dependent_zoomed)
-  )
-
-ind_levels <- levels(db$Ind)
-dep_levels <- levels(db$Dep)
-
-## ---------------------------
-## 2. Fit model
-## ---------------------------
-
-m <- rma.mv(
-  yi,
-  vi,
-  mods   = ~ Ind * Dep,
-  random = ~ 1 | ID,
-  data   = db
-)
-
-## ---------------------------
-## 3. Build full grid
-## ---------------------------
-
-newdat <- expand.grid(
-  Ind = ind_levels,
-  Dep = dep_levels,
-  stringsAsFactors = FALSE
-)
-
-newdat$Ind <- factor(newdat$Ind, levels = ind_levels)
-newdat$Dep <- factor(newdat$Dep, levels = dep_levels)
-
-## ---------------------------
-## 4. Build model matrix and KEEP estimable rows
-## ---------------------------
-
-X <- model.matrix(~ Ind * Dep, data = newdat)
-
-## Columns actually estimated in the model
-coef_names <- colnames(m$X)
-
-## Keep only columns common to both
-X_common <- X[, colnames(X) %in% coef_names, drop = FALSE]
-
-## Identify rows that are fully estimable
-estimable <- apply(X_common, 1, function(r) all(is.finite(r)))
-
-newdat <- newdat[estimable, , drop = FALSE]
-X_common <- X_common[estimable, , drop = FALSE]
-
-## ---------------------------
-## 5. Predict
-## ---------------------------
-
-pred <- predict(m, newmods = X_common)
-
-newdat <- newdat %>%
-  mutate(
-    b     = pred$pred,
-    ci.lb = pred$ci.lb,
-    ci.ub = pred$ci.ub
-  )
-
-## Fisher-z to r
-newdat <- newdat %>%
-  mutate(
-    ES = (exp(b)     - 1) / (exp(b)     + 1),
-    L  = (exp(ci.lb) - 1) / (exp(ci.lb) + 1),
-    U  = (exp(ci.ub) - 1) / (exp(ci.ub) + 1)
-  )
-
-## ---------------------------
-## 6. Add sample sizes
-## ---------------------------
-
-newdat <- newdat %>%
-  rowwise() %>%
-  mutate(
-    n_studies   = n_distinct(db$ID[db$Ind == Ind & db$Dep == Dep]),
-    n_estimates = sum(db$Ind == Ind & db$Dep == Dep)
-  ) %>%
-  ungroup()
-
-## ---------------------------
-## 7. Plot
-## ---------------------------
-
-ggplot(newdat) +
-  facet_grid(. ~ Dep) +
-  geom_pointrange(
-    aes(x = Ind, y = ES, ymin = L, ymax = U),
-    size = 1
-  ) +
-  geom_hline(yintercept = 0, linetype = 2, colour = "grey50") +
-  coord_flip() +
-  scale_x_discrete(drop = FALSE) +
-  ylim(-0.6, 0.5) +
-  xlab("") +
-  ylab(expression(
-    paste("Effect size [", italic("r"), "] ± 95% CI")
-  )) +
-  theme_minimal() +
-  theme(
-    legend.position = "none",
-    strip.text = element_text(face = "bold")
-  )
-
-
-
-library(metafor)
-library(dplyr)
-library(ggplot2)
-
-## ---------------------------
-## 1. Prepare factors
-## ---------------------------
-
-
-db$Ind <- factor(db$Independent_macro)
-db$DepM <- factor(db$Dependent_zoomed)
-
-ind_levels  <- levels(db$Ind)
-depm_levels <- levels(db$DepM)
-
-## ---------------------------
-## 2. Fit interaction model
-## ---------------------------
-
-m <- rma.mv(
-  yi,
-  vi,
-  mods   = ~ Ind * DepM,
-  random = ~ 1 | ID,
-  data   = db
-)
-
-## ---------------------------
-## 3. Build full Ind × DepM grid
-## ---------------------------
-
-newdat <- expand.grid(
-  Ind  = ind_levels,
-  DepM = depm_levels,
-  stringsAsFactors = FALSE
-)
-
-newdat$Ind  <- factor(newdat$Ind,  levels = ind_levels)
-newdat$DepM <- factor(newdat$DepM, levels = depm_levels)
-
-## ---------------------------
-## 4. Model matrix & estimable cells
-## ---------------------------
-
-X <- model.matrix(~ Ind * DepM, data = newdat)
-
-## keep only columns that exist in fitted model
-X_common <- X[, colnames(X) %in% colnames(m$X), drop = FALSE]
-
-## identify estimable rows
-estimable <- apply(X_common, 1, function(r) all(is.finite(r)))
-
-newdat   <- newdat[estimable, , drop = FALSE]
-X_common <- X_common[estimable, , drop = FALSE]
-
-## ---------------------------
-## 5. Predict marginal cell effects
-## ---------------------------
-
-pred <- predict(m, newmods = X_common)
-
-newdat <- newdat %>%
-  mutate(
-    b     = pred$pred,
-    ci.lb = pred$ci.lb,
-    ci.ub = pred$ci.ub
-  )
-
-## Fisher-z to r
-newdat <- newdat %>%
-  mutate(
-    ES = (exp(b)     - 1) / (exp(b)     + 1),
-    L  = (exp(ci.lb) - 1) / (exp(ci.lb) + 1),
-    U  = (exp(ci.ub) - 1) / (exp(ci.ub) + 1)
-  )
-
-## ---------------------------
-## 6. Sample size information
-## ---------------------------
-
-newdat <- newdat %>%
-  rowwise() %>%
-  mutate(
-    n_studies   = n_distinct(db$ID[db$Ind == Ind & db$DepM == DepM]),
-    n_estimates = sum(db$Ind == Ind & db$DepM == DepM)
-  ) %>%
-  ungroup()
-
-## optional: drop empty cells
-newdat <- newdat %>% filter(n_estimates > 0)
-
-## ---------------------------
-## 7. Plot
-## ---------------------------
-
-ggplot(newdat) +
-  facet_grid(. ~ DepM) +
-  geom_pointrange(
-    aes(x = Ind, y = ES, ymin = L, ymax = U),
-    size = 1
-  ) +
-  geom_hline(yintercept = 0, linetype = 2, colour = "grey50") +
-  coord_flip() +
-  scale_x_discrete(drop = FALSE) +
-  ylim(-0.6, 0.5) +
-  xlab("") +
-  ylab(expression(
-    paste("Effect size [", italic("r"), "] ± 95% CI")
-  )) +
-  theme_minimal() +
-  theme(
-    legend.position = "none",
-    strip.text = element_text(face = "bold")
-  )
-
-
-## --------------------------------------------------
-##  Hierarchical moderator
-## --------------------------------------------------
-
-db$Macro    <- factor(db$Independent_macro)
-db$Specific <- factor(db$Independent_zoomed)
-
-db$Ind_full <- interaction(db$Macro, db$Specific, sep = " - ", drop = TRUE)
-
-model_trait_hier <- rma.mv(yi, vi, mods   = ~ 0 + Macro / Specific, random = list(~1 | ID), data = db)
-
-X <- model.matrix(model_trait_hier)
-pred <- predict(model_trait_hier, newmods = X)
-
-result_trait <- unique(data.frame(
-  Macro    = db$Macro,
-  Specific = db$Specific,
-  Ind_full = db$Ind_full,
-  b        = pred$pred,
-  ci.lb    = pred$ci.lb,
-  ci.ub    = pred$ci.ub
-))
-
-result_trait$ES <- (exp(result_trait$b)    - 1) / (exp(result_trait$b)    + 1)
-result_trait$L  <- (exp(result_trait$ci.lb) - 1) / (exp(result_trait$ci.lb) + 1)
-result_trait$U  <- (exp(result_trait$ci.ub) - 1) / (exp(result_trait$ci.ub) + 1)
-
-# Final labels
-result_trait$n_studies <- mapply(
-  function(m, s)
-    length(unique(db$ID[db$Macro == m & db$Specific == s])),
-  result_trait$Macro, result_trait$Specific
-)
-
-result_trait$n_estimates <- mapply(
-  function(m, s)
-    sum(db$Macro == m & db$Specific == s),
-  result_trait$Macro, result_trait$Specific
-)
-
-result_trait$Label <- paste0(result_trait$Macro, " - ", result_trait$Specific," (", result_trait$n_studies, ", ", result_trait$n_estimates, ")")
-result_trait$Label <- factor(result_trait$Label, levels = sort(as.character(result_trait$Label)))
-
-db$Label <- factor(
-  result_trait$Label[match(db$Ind_full, result_trait$Ind_full)],
-  levels = result_trait$Label
-)
-
-ggplot(result_trait) +
-  xlab("") +
-  ylab(expression(paste(
-    "Effect size [", italic("r"), "]" %+-% "95% Confidence interval"
-  ))) +
+for (i in 1:length(predictors_to_analyse)){  
   
-  geom_pointrange(
-    aes(x = Label, y = ES, ymin = L, ymax = U,
-        color = Macro, fill = Macro),
-    size = 1
-  ) +
+  #subset the predictor
+  data_i  <- db_subset[db_subset$Independent == predictors_to_analyse[i], ]
   
-  geom_jitter(
-    data = db,
-    aes(x = Label, y = Pearson_r,
-        color = Macro, fill = Macro),
-    size = 0.3, width = 0.05
-  ) +
+  #fitting the model
+  model_i <- rma.mv(yi, vi, random =  ~ 1 | ID, data = data_i) 
   
-  geom_pointrange(
-    aes(x = Label, y = ES, ymin = L, ymax = U,
-        color = Macro, fill = Macro),
-    size = 1
-  ) +
+  #extracting coefficients
+  result_for_plot_i <- data.frame(label = paste(predictors_to_analyse[i]," (" ,
+                                                length(unique(data_i$ID)),", ",
+                                                nrow(data_i),")",sep=''),
+                                  b     = model_i$b,
+                                  ci.lb = model_i$ci.lb,
+                                  ci.ub = model_i$ci.ub,
+                                  ES    = ((exp(model_i$b)-1))/((exp(model_i$b)+1)),
+                                  L     = ((exp(model_i$ci.lb)-1)/(exp(model_i$ci.lb)+1)),
+                                  U     = ((exp(model_i$ci.ub)-1)/(exp(model_i$ci.ub)+1)))
   
-  geom_hline(yintercept = 0, lty = 2, col = "grey50") +
-  coord_flip() +
-  ylim(-1, 1) +
-  theme(legend.position = "none")
+  #store the data 
+  SUBSET[[i]]     <- data_i
+  MODEL[[i]]      <- model_i
+  result_for_plot <- rbind(result_for_plot,result_for_plot_i)
+  
+}
 
 
+(plot1 <- ggplot(data= result_for_plot, aes(x=label, y=ES, ymin=L, ymax=U)) +
+    geom_hline(yintercept=0, lty=2) +  # add a dotted line at x=1 after flip
+    #geom_hline(yintercept=0.373, lty=3, col="grey70") +  
+    geom_pointrange(size= 1) + ylim(-.3,0.5) + coord_flip())
