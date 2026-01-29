@@ -412,7 +412,7 @@ result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
   aes(y = Moderator, x = ES, xmin = L, xmax = U)
 ) +
   geom_pointrange(size = 0.9) +
-  geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+  geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.1, size = 2,color = "grey30") +
   geom_vline(xintercept = 0, lty = 2, color = "grey50") +
   ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
   coord_cartesian(xlim = x_limits) +
@@ -430,7 +430,7 @@ result_dep$Moderator <- factor(result_dep$Moderator,
   aes(y = Moderator, x = ES, xmin = L, xmax = U)
 ) +
     geom_pointrange(size = 0.9) +
-    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.1, size = 2,color = "grey30") +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
     ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
     coord_cartesian(xlim = x_limits) +
@@ -454,7 +454,7 @@ result_geo$Moderator <- factor(result_geo$Moderator,
   result_geo,
   aes(y = Moderator, x = ES, xmin = L, xmax = U)
 ) +
-    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.1, size = 2,color = "grey30") +
     geom_pointrange(size = 0.9) +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
     ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
@@ -480,7 +480,7 @@ result_taxa$Moderator <- factor(result_taxa$Moderator,
   result_taxa,
   aes(y = Moderator, x = ES, xmin = L, xmax = U)
 ) +
-    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
+    geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.1, size = 2,color = "grey30") +
     geom_pointrange(size = 0.9) +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
     ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
