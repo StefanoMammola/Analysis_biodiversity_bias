@@ -16,7 +16,7 @@
 # Loading R packages ------------------------------------------------------
 
 if(!require("pacman")) {install.packages("pacman")}
-pacman::p_load("dplyr", "gghalves", "ggplot2","metafor", "patchwork","stringr","readxl","tidyr")
+pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x","metafor", "patchwork","stringr","readxl","tidyr")
 
 
 # Function ----------------------------------------------------------------
@@ -402,6 +402,7 @@ dev.off()
 # Now plot of each moderator ---------------------------------------------------
 
 x_limits <- c(-0.8, 0.8)
+strip <- strip_themed(background_x = elem_list_rect(fill = my_colors))
 
 #subset for type
 result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
@@ -413,7 +414,7 @@ result_type <- result_for_plot[result_for_plot$Moderator_group == "Study_type",]
   geom_pointrange(size = 0.9) +
   geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
   geom_vline(xintercept = 0, lty = 2, color = "grey50") +
-  facet_wrap(~ label, nrow = 1) +
+  ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
   coord_cartesian(xlim = x_limits) +
   xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
   ylab("Methodology"))
@@ -431,7 +432,7 @@ result_dep$Moderator <- factor(result_dep$Moderator,
     geom_pointrange(size = 0.9) +
     geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
-    facet_wrap(~ label, nrow = 1) +
+    ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
     coord_cartesian(xlim = x_limits) +
     xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
     ylab("Dependent variable"))
@@ -456,7 +457,7 @@ result_geo$Moderator <- factor(result_geo$Moderator,
     geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
     geom_pointrange(size = 0.9) +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
-    facet_wrap(~ label, nrow = 1) +
+    ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
     coord_cartesian(xlim = x_limits) +
     xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
     ylab("Geography"))
@@ -482,7 +483,7 @@ result_taxa$Moderator <- factor(result_taxa$Moderator,
     geom_text(aes( x = -Inf, label = paste0(N_study, " | ", N_est)), hjust = -0.05, size = 2,color = "grey30") +
     geom_pointrange(size = 0.9) +
     geom_vline(xintercept = 0, lty = 2, color = "grey50") +
-    facet_wrap(~ label, nrow = 1) +
+    ggh4x::facet_wrap2(~ label, nrow = 1, strip = strip) +
     coord_cartesian(xlim = x_limits) +
     xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
     ylab("Taxon (versus control)"))
@@ -510,8 +511,6 @@ plot_geo <- plot_geo + theme(
 )
 
 #Assemble
-library("patchwork")
-
 pdf(file = "Figures/Figure_2.pdf", width = 10, height = 10)
 
 (final_plot <- 
