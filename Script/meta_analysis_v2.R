@@ -308,7 +308,7 @@ rownames(result_for_plot) <- NULL
 
 # plot base model ---------------------------------------------------------
 
-my_colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e")
+my_colors <- c("#66a61e","#d95f02", "#7570b3", "#e7298a", "#1b9e77")
 
 #subsetting the database for base plot estimates
 result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",] |> droplevels()
@@ -362,8 +362,8 @@ db_subset$label_plot  <- factor(db_subset$label_plot, levels = rev(result_tot$la
     
   geom_hline(yintercept = 0, lty = 2, col = "grey50") +
   coord_flip() +
-  scale_fill_manual(values = my_colors)+
-  scale_color_manual(values = my_colors)+
+  scale_fill_manual(values = rev(my_colors))+
+  scale_color_manual(values = rev(my_colors))+
   ylim(-1, 1) +
   xlab("") +
   ylab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval")))+
@@ -388,8 +388,8 @@ result_ind$Moderator2 <- factor(result_ind$Moderator2,
     coord_cartesian(xlim = c(-1, 1)) +
     xlab(expression(paste("Effect size [",italic("r"),"]" %+-% "95% Confidence interval"))) +
     ylab("")+
-    scale_fill_manual(values = rev(my_colors))+
-    scale_color_manual(values = rev(my_colors))+
+    scale_fill_manual(values = my_colors)+
+    scale_color_manual(values = my_colors)+
     theme(legend.position = "none"))
 
 pdf(file = "Figures/Figure_1.pdf", width = 13, height =7)
