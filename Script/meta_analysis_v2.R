@@ -1,5 +1,5 @@
 ####################################################################################
-# TITLE #
+####### The biodiversity we ignore: a global meta-analysis on taxonomic bias #######
 ####################################################################################
 
 ##################
@@ -119,6 +119,9 @@ theme_update(
   axis.title = element_text(size = 12, colour = "grey10") #Size and color of text
 )
 
+#Colors
+my_colors <- c("#66a61e","#d95f02", "#7570b3", "#e7298a", "#1b9e77")
+
 # Load data ---------------------------------------------------------------
 db <- readxl::read_excel("Data/Database_meta_analysis_bias.xlsx", na = "NA") |>
   dplyr::mutate_if(is.character, as.factor) |> 
@@ -186,6 +189,12 @@ table(db2$Study_type) |>
 
 #Summary of estimates in each combination of response and predictor
 (table_tot <- table(db$Dependent_zoomed,db$Independent_zoomed))
+
+####################################################################################
+# Summary figure  ------------------------------------------------------------------
+####################################################################################
+
+#AGGIUNGEREI QUI FIGURA 1
 
 ####################################################################################
 # Data analysis -----------------------------------------------------------------
@@ -308,8 +317,6 @@ rownames(result_for_plot) <- NULL
 
 # plot base model ---------------------------------------------------------
 
-my_colors <- c("#66a61e","#d95f02", "#7570b3", "#e7298a", "#1b9e77")
-
 #subsetting the database for base plot estimates
 result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",] |> droplevels()
 result_tot$label_plot <- result_tot$label
@@ -392,7 +399,7 @@ result_ind$Moderator2 <- factor(result_ind$Moderator2,
     scale_color_manual(values = my_colors)+
     theme(legend.position = "none"))
 
-pdf(file = "Figures/Figure_1.pdf", width = 13, height =7)
+pdf(file = "Figures/Figure_2.pdf", width = 13, height =7)
 
 (plot_base_model + plot_ind) +
   plot_annotation(tag_levels = list(c("A","B")))
@@ -511,7 +518,7 @@ plot_geo <- plot_geo + theme(
 )
 
 #Assemble
-pdf(file = "Figures/Figure_2.pdf", width = 10, height = 10)
+pdf(file = "Figures/Figure_3.pdf", width = 10, height = 10)
 
 (final_plot <- 
   plot_type +
@@ -530,5 +537,7 @@ pdf(file = "Figures/Figure_2.pdf", width = 10, height = 10)
 
 dev.off()
 
+sessionInfo()
+#end
 
 
