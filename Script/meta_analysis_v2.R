@@ -2,12 +2,12 @@
 ####### The biodiversity we ignore: a global meta-analysis on taxonomic bias #######
 ####################################################################################
 
-##################
+####################################################################################
 # R script to generate the analysis
-# Analysis performed with R (v. 4.4.1) and Rstudio (v. XXX)
-# Created by Stefano Mammola
+# Analysis performed with R (v. 4.4.1) and Rstudio (v. 2025.09.0+387)
+# Created by Stefano Mammola and Martino Adamo
 # Initiated 16/12/2025
-##################
+#####################################################################################
 
 ####################################################################################
 # Preparation ----------------------------------------------------------------------
@@ -16,8 +16,7 @@
 # Loading R packages ------------------------------------------------------
 
 if(!require("pacman")) {install.packages("pacman")}
-pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x","metafor", "patchwork","stringr","readxl","tidyr")
-
+pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x", "ggimage", "gridExtra", "metafor", "rnaturalearth", "rnaturalearthdata", "patchwork","stringr","readxl","tidyr")
 
 # Function ----------------------------------------------------------------
 
@@ -134,7 +133,7 @@ db2 <- db |>
   droplevels()
 
 ####################################################################################
-# Data exploration -----------------------------------------------------------------
+# Summary stats --------------------------------------------------------------------
 ####################################################################################
 
 #Number of papers
@@ -155,46 +154,136 @@ range(db$Year)
 
 table(db$Taxon_macro)/sum(table(db$Taxon_macro))
 
-#Publication by year
-db2 |>
-  ggplot2::ggplot(aes(Year))+
-  geom_bar(fill = "#2c7fb8", color = "black")+
-  labs(
-    x = "",
-    y = "Number of publications"
-  ) +
-  scale_x_continuous(breaks = seq(min(db2$Year), max(db2$Year), by = 2)) +
-  scale_y_continuous(breaks = seq(0, 12, by = 2)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-#Studies by country
-table(db2$Geography_macro) |>
-  data.frame() |>
-  ggplot2::ggplot(aes(x = Freq, y = Var1))+
-  geom_col(fill = "#2c7fb8")+
-  labs(
-    y = "",
-    x = "Number of publications"
-  )
-
-#Studies by country
-table(db2$Study_type) |>
-  data.frame() |>
-  ggplot2::ggplot(aes(x = Freq, y = Var1))+
-  geom_col(fill = "#2c7fb8")+
-  labs(
-    y = "",
-    yx = "Number of publications"
-  )
-
 #Summary of estimates in each combination of response and predictor
 (table_tot <- table(db$Dependent_zoomed,db$Independent_zoomed))
 
 ####################################################################################
-# Summary figure  ------------------------------------------------------------------
+# Summary Figure  1 ----------------------------------------------------------------
 ####################################################################################
 
-#AGGIUNGEREI QUI FIGURA 1
+# studies by year --------------------------------------------------------------
+
+A <- db |> 
+      dplyr::select(ID, Year) |> 
+      dplyr::group_by(Year) |> 
+      dplyr::distinct() |> 
+      dplyr::mutate(freq = n_distinct(ID)) |>
+  ggplot(aes(x = Year)) +
+  geom_bar(stat = "count", fill = "#Aec6cf", color = "grey70") +
+  labs(title = "A", x = NULL, y = "Number of studies") +
+  scale_x_continuous(breaks = seq(min(db$Year), max(db$Year), by = 5)) +
+  theme_minimal(base_family = "sans") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(), 
+        axis.title.x = element_text(margin = margin(t=10), color = "grey40"),
+        axis.title.y = element_text(color = "grey40"),
+        axis.text.x =  element_text(color = "grey40", angle = 90, hjust = -5),
+        plot.title = element_text(size = 16, color = "#1a1a1a"))
+
+# studies by country -----------------------------------------------------------
+
+world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+
+geo <- read.delim("geo.tsv") # manually edited version of the file created at line 227 (check of country names match)
+
+world_map <- world |> 
+  dplyr::left_join(geo, by =  "sovereignt") |> 
+  dplyr::filter(sovereignt != "Antarctica")
+
+B <-
+  ggplot(world_map) +
+  geom_sf(aes(fill = count-29), color = "grey40", linewidth = 0.1) +
+  scale_fill_gradient(low = "#7570b3", high = "grey10", name = "") + #"#d95f02"
+  ggtitle("B") +
+  theme_void() + theme(plot.title = element_text(size = 16, color = "#1a1a1a", hjust = 0.05))
+
+# studies by taxon -------------------------------------------------------------
+
+tax <- db |> 
+  dplyr::select(ID,Taxon_macro,Taxon,Taxon_verbatim) |>
+  dplyr::distinct() |>
+  dplyr::mutate(Taxon = str_replace_all(Taxon, "Invertebrates", "Arthropods")) |>
+  dplyr::mutate(Taxon = str_replace_all(Taxon, "Vertebrates", "Multiple")) |>
+  dplyr::mutate(group = case_when(Taxon == "Multiple" ~ "Multiple", TRUE ~ "Other taxa"))
+
+img_df <- tax |> 
+  dplyr::count(Taxon) |>
+  dplyr::mutate(
+    image = case_when(
+      Taxon == "Plants"        ~ "img/plants.png",
+      Taxon == "Birds"         ~ "img/birds.png",
+      Taxon == "Mammals"       ~ "img/mammal.png",
+      Taxon == "Fish"          ~ "img/fish.png",
+      Taxon == "Arthropods"    ~ "img/spid.png",
+      Taxon == "Reptiles"      ~ "img/reptile.png",
+      Taxon == "Amphibians"    ~ "img/frogs.png",
+      TRUE                     ~ NA_character_)) |>
+  dplyr::mutate(group = case_when(Taxon == "Multiple" ~ "Multiple", TRUE ~ "Other taxa"))
+
+C <- 
+  ggplot2::ggplot(img_df, aes(x = reorder(Taxon,-n), y = n)) +
+  geom_col(aes(fill = Taxon), fill = "#Aec6cf", color = "grey70") +
+  geom_image(
+    data = img_df,
+    aes(x = Taxon, y = n + 0.5, image = image),
+    size = 0.2,
+    inherit.aes = T,
+    na.rm = TRUE) +
+  ylim(0,35) +
+  labs(title = "C", x = NULL, y = "Number of studies") +
+  facet_grid(. ~ group, scales = "free_x", space = "free_x", drop = TRUE) +
+  theme_minimal(base_family = "sans") +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.x = element_text(margin = margin(t = 10), color = "grey40"),
+    axis.title.y = element_text(color = "grey40"),
+    axis.text.x  = element_text(color = "grey40", angle = 90, hjust = 1),
+    plot.title   = element_text(size = 16, color = "#1a1a1a"),
+    legend.position = "none",
+    strip.text = element_blank())
+
+# variables --------------------------------------------------------------------
+
+df_counts <- 
+  db |> 
+  dplyr::select(ID, Independent_macro) |> 
+  dplyr::distinct() |>
+  dplyr::count(Independent_macro, name = "count")
+
+units <- df_counts |> 
+  tidyr::uncount(count) |> 
+  dplyr::mutate(id = row_number())
+
+ncol <- 10  
+
+units <- units  |> dplyr::mutate(x = (id - 1) %% ncol + 1, y = (id - 1) %/% ncol + 1) 
+
+#Sort
+units$Independent_macro <- factor(units$Independent_macro,
+                               levels = c(levels(units$Independent_macro)[1:4],
+                                          levels(units$Independent_macro)[6],
+                                          levels(units$Independent_macro)[5])) #put level "Other" last
+
+
+D <- 
+  ggplot(units, aes(x, y, fill = Independent_macro)) +
+  geom_tile(color = "grey20", linewidth = 0.2) +
+  scale_fill_manual(values = c(my_colors,"grey70"), drop = FALSE) +
+  coord_equal() + labs(title = "D") +
+  scale_y_reverse() +
+  labs(fill = "Explanatory variable") +
+  theme_void() +
+  theme(legend.position = "right",
+        plot.title = element_text(size = 16, color = "#1a1a1a"))
+
+# compose the image panel ------------------------------------------------------
+
+lay <- rbind(c(1,2,2),c(3,3,4))
+
+panel <- grid.arrange(A, B, C, D, layout_matrix = lay)
+
+#ggsave(plot = panel, filename = "figure1.tiff", device = "tiff", dpi = 320) #example
 
 ####################################################################################
 # Data analysis -----------------------------------------------------------------
@@ -320,14 +409,6 @@ rownames(result_for_plot) <- NULL
 #subsetting the database for base plot estimates
 result_tot <- result_for_plot[result_for_plot$Moderator_group == "Base model",] |> droplevels()
 result_tot$label_plot <- result_tot$label
-
-# #adding sample size to label
-# result_tot$label_plot <- paste0(result_tot$label, 
-#                                 " (",
-#                                 result_tot$N_study, 
-#                                 ", ",
-#                                 result_tot$N_est, 
-#                                 ")") |> as.factor()
 
 #rename label in the main db
 db_subset$label_plot <- db_subset$Independent_macro
@@ -533,11 +614,10 @@ pdf(file = "Figures/Figure_3.pdf", width = 10, height = 10)
     legend.position = "none",
     strip.background = element_rect(fill = "grey90"),
     panel.grid.major.y = element_blank()
-  ))
+  )+
+    plot_annotation(tag_levels = list(c("A","B","C","D"))))
 
 dev.off()
 
 sessionInfo()
 #end
-
-
