@@ -16,7 +16,9 @@
 # Loading R packages ------------------------------------------------------
 
 if(!require("pacman")) {install.packages("pacman")}
-pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x", "ggimage", "gridExtra", "metafor", "rnaturalearth", "rnaturalearthdata", "patchwork","stringr","readxl","tidyr")
+pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x", "ggimage", "gridExtra", 
+               "metafor", "patchwork", "rnaturalearth", "rnaturalearthdata", 
+               "readxl", "stringr", "tidyr")
 
 # Function ----------------------------------------------------------------
 
@@ -168,7 +170,7 @@ A <- db |>
       dplyr::group_by(Year) |> 
       dplyr::distinct() |> 
       dplyr::mutate(freq = n_distinct(ID)) |>
-  ggplot(aes(x = Year)) +
+  ggplot2::ggplot(aes(x = Year)) +
   geom_bar(stat = "count", fill = "#Aec6cf", color = "grey70") +
   labs(title = "A", x = NULL, y = "Number of studies") +
   scale_x_continuous(breaks = seq(min(db$Year), max(db$Year), by = 5)) +
@@ -184,14 +186,17 @@ A <- db |>
 
 world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
 
-geo <- read.delim("geo.tsv") # manually edited version of the file created at line 227 (check of country names match)
+# write.table(db |> dplyr::select(ID, Geography_macro, Geography_verbatim) |> dplyr::distinct(), file = "geo.tsv", sep = "\t", row.names = F)
+# write.table(cbind(world$sovereignt, world$continent), file = "world.tsv", sep = "\t", row.names = F)
+
+geo <- read.delim("geo.tsv") # manually edited version of the file created at line 189 (check of country names match)
 
 world_map <- world |> 
   dplyr::left_join(geo, by =  "sovereignt") |> 
   dplyr::filter(sovereignt != "Antarctica")
 
 B <-
-  ggplot(world_map) +
+  ggplot2::ggplot(world_map) +
   geom_sf(aes(fill = count-29), color = "grey40", linewidth = 0.1) +
   scale_fill_gradient(low = "#7570b3", high = "grey10", name = "") + #"#d95f02"
   ggtitle("B") +
@@ -265,9 +270,8 @@ units$Independent_macro <- factor(units$Independent_macro,
                                           levels(units$Independent_macro)[6],
                                           levels(units$Independent_macro)[5])) #put level "Other" last
 
-
 D <- 
-  ggplot(units, aes(x, y, fill = Independent_macro)) +
+  ggplot2::ggplot(units, aes(x, y, fill = Independent_macro)) +
   geom_tile(color = "grey20", linewidth = 0.2) +
   scale_fill_manual(values = c(my_colors,"grey70"), drop = FALSE) +
   coord_equal() + labs(title = "D") +
@@ -279,11 +283,9 @@ D <-
 
 # compose the image panel ------------------------------------------------------
 
-lay <- rbind(c(1,2,2),c(3,3,4))
+Figure1 <- grid.arrange(A, B, C, D, layout_matrix = rbind(c(1,2,2),c(3,3,4)))
 
-panel <- grid.arrange(A, B, C, D, layout_matrix = lay)
-
-#ggsave(plot = panel, filename = "figure1.tiff", device = "tiff", dpi = 320) #example
+#ggsave(plot = panel, Figure1 = "figure1.tiff", device = "tiff", dpi = 320) #example
 
 ####################################################################################
 # Data analysis -----------------------------------------------------------------
