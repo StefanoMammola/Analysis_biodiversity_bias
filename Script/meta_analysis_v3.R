@@ -17,7 +17,7 @@
 
 if(!require("pacman")) {install.packages("pacman")}
 pacman::p_load("dplyr", "gghalves", "ggplot2","ggh4x", "ggimage", "gridExtra", 
-               "metafor", "patchwork", "rnaturalearth", "rnaturalearthdata", 
+               "metafor", "patchwork", "png", "rnaturalearth", "rnaturalearthdata", 
                "readxl", "stringr", "tidyr")
 
 # Function ----------------------------------------------------------------
@@ -189,7 +189,7 @@ world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
 # write.table(db |> dplyr::select(ID, Geography_macro, Geography_verbatim) |> dplyr::distinct(), file = "geo.tsv", sep = "\t", row.names = F)
 # write.table(cbind(world$sovereignt, world$continent), file = "world.tsv", sep = "\t", row.names = F)
 
-geo <- read.delim("geo.tsv") # manually edited version of the file created at line 189 (check of country names match)
+geo <- read.delim("Data/geo.tsv") # manually edited version of the file created at line 189 (check of country names match)
 
 world_map <- world |> 
   dplyr::left_join(geo, by =  "sovereignt") |> 
@@ -215,13 +215,13 @@ img_df <- tax |>
   dplyr::count(Taxon) |>
   dplyr::mutate(
     image = case_when(
-      Taxon == "Plants"        ~ "img/plants.png",
-      Taxon == "Birds"         ~ "img/birds.png",
-      Taxon == "Mammals"       ~ "img/mammal.png",
-      Taxon == "Fish"          ~ "img/fish.png",
-      Taxon == "Arthropods"    ~ "img/spid.png",
-      Taxon == "Reptiles"      ~ "img/reptile.png",
-      Taxon == "Amphibians"    ~ "img/frogs.png",
+      Taxon == "Plants"        ~ "Silhouettes/plants.png",
+      Taxon == "Birds"         ~ "Silhouettes/birds.png",
+      Taxon == "Mammals"       ~ "Silhouettes/mammal.png",
+      Taxon == "Fish"          ~ "Silhouettes/fish.png",
+      Taxon == "Arthropods"    ~ "Silhouettes/spid.png",
+      Taxon == "Reptiles"      ~ "Silhouettes/reptile.png",
+      Taxon == "Amphibians"    ~ "Silhouettes/frogs.png",
       TRUE                     ~ NA_character_)) |>
   dplyr::mutate(group = case_when(Taxon == "Multiple" ~ "Multiple", TRUE ~ "Other taxa"))
 
@@ -283,9 +283,11 @@ D <-
 
 # compose the image panel ------------------------------------------------------
 
-Figure1 <- grid.arrange(A, B, C, D, layout_matrix = rbind(c(1,2,2),c(3,3,4)))
+pdf(file = "Figures/Figure_1.pdf", width = 12, height = 7)
 
-#ggsave(plot = panel, Figure1 = "figure1.tiff", device = "tiff", dpi = 320) #example
+(Figure1 <- grid.arrange(A, B, C, D, layout_matrix = rbind(c(1,2,2),c(3,3,4))))
+
+dev.off()
 
 ####################################################################################
 # Data analysis -----------------------------------------------------------------
