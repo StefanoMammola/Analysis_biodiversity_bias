@@ -250,6 +250,13 @@ C <-
 
 # variables --------------------------------------------------------------------
 
+#Sort db
+db$Independent_macro <- 
+  forcats::fct_relevel(db$Independent_macro, "Other", after = Inf)
+
+db <- db |> dplyr::arrange(Independent_macro)
+
+#Colors
 df_counts <- 
   db |> 
   dplyr::select(ID, Independent_macro) |> 
@@ -264,16 +271,20 @@ ncol <- 10
 
 units <- units  |> dplyr::mutate(x = (id - 1) %% ncol + 1, y = (id - 1) %/% ncol + 1) 
 
-#Sort
-units$Independent_macro <- factor(units$Independent_macro,
-                               levels = c(levels(units$Independent_macro)[1:4],
-                                          levels(units$Independent_macro)[6],
-                                          levels(units$Independent_macro)[5])) #put level "Other" last
-
 D <- 
   ggplot2::ggplot(units, aes(x, y, fill = Independent_macro)) +
   geom_tile(color = "grey20", linewidth = 0.2) +
-  scale_fill_manual(values = c(my_colors,"grey70"), drop = FALSE) +
+    scale_fill_manual(
+      values = c(
+        "Appearance" = "#66a61e",
+        "Commonness" = "#d95f02",
+        "Conservation" = "#7570b3",
+        "General bias" = "#e7298a",
+        "Utilitarianism" = "#1b9e77",
+        "Other"  = "grey70"
+      ),
+      drop = FALSE
+    )+
   coord_equal() + labs(title = "D") +
   scale_y_reverse() +
   labs(fill = "Explanatory variable") +
