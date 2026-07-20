@@ -144,9 +144,9 @@ nrow(db2) #78
 #Number of estimates
 nrow(db) #905
 
-#Average number of publication per study
-mean(table(db$ID))
-sd(table(db$ID))
+#Median number of publication per study
+median(table(db$ID))
+range(table(db$ID))
 
 #Number of journals
 nlevels(db$Journal) #54
