@@ -1,4 +1,4 @@
-Mammola S. et al. (2026). The biodiversity we ignore: a global meta-analysis on taxonomic bias. Ambio
+Mammola S. et al. (2026). The biodiversity we ignore: a global meta-analysis on taxonomic bias. Ambio, doi:10.1007/s13280-026-02479-8
 
 # Data sources:
 
